@@ -1,2 +1,1 @@
-# Local_GDP
-This is a repository for the Local GDP project by ERH and JZ.
+This repository contains the code for the paper "Local GDP Estimates Around the World" by Esteban Rossi-Hansberg and Jialing Zhang. This is a complete replication package that produces all results.
