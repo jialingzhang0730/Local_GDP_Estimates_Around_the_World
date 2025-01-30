@@ -1,0 +1,60 @@
+
+> # ------------------------------------------------------------------------------------------------- #
+> # Task Summary:
+> # This file is to obtain r .... [TRUNCATED] 
+[1] "LC_CTYPE=en_US.UTF-8;LC_NUMERIC=C;LC_TIME=en_US.UTF-8;LC_COLLATE=en_US.UTF-8;LC_MONETARY=en_US.UTF-8;LC_MESSAGES=en_US.UTF-8;LC_PAPER=en_US.UTF-8;LC_NAME=C;LC_ADDRESS=C;LC_TELEPHONE=C;LC_MEASUREMENT=en_US.UTF-8;LC_IDENTIFICATION=C"
+
+> Sys.setlocale("LC_ALL", "en_US.UTF-8")
+[1] "LC_CTYPE=en_US.UTF-8;LC_NUMERIC=C;LC_TIME=en_US.UTF-8;LC_COLLATE=en_US.UTF-8;LC_MONETARY=en_US.UTF-8;LC_MESSAGES=en_US.UTF-8;LC_PAPER=en_US.UTF-8;LC_NAME=C;LC_ADDRESS=C;LC_TELEPHONE=C;LC_MEASUREMENT=en_US.UTF-8;LC_IDENTIFICATION=C"
+
+> # Load packages
+> 
+> library(tidyverse)
+
+> library(sf)
+
+> library(gdata)
+
+> library(parallel)
+
+> library(tictoc)
+
+> library(units)
+
+> library(OECD)
+
+> library(rsdmx)
+
+> library(giscoR)
+
+> library(regions)
+
+> library(rmapshaper)
+
+> library(countrycode)
+
+> library(stringi)
+
+> library(readxl)
+
+> library(XML)
+
+> library(data.table)
+
+> library(qgisprocess)
+
+> # ------------------------------------------------- #
+> # Obtain GDP data in current national price: year 2012 - 2020
+> 
+> # Read GDP data
+> oecd_da .... [TRUNCATED] 
+
+> # Get data structure: 
+> oced_stru <- read_xlsx("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD Territorial correspondence - November 2023 ..." ... [TRUNCATED] 
+
+> stru_more <- oced_stru  %>% 
++     left_join(rename(oced_stru, grandparent_id = parent_id, parent_name = name),
++             by = c("parent_id" = " ..." ... [TRUNCATED] 
+
+> # # organize GDP data: note the country dropped and year dropped for specific countries!!!!
+> # #   for CHN, IND and USA: we will collect from their .... [TRUNCATED] 
