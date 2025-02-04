@@ -1,9 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to deal with the problem that GDP per capita is high in low population places for 1deg
-# One possible way is to do post-adjustment that manually let cells that have population density < X (a constant number) to have GCP = 0
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file performs post-adjustment on the predicted 1-degree cell GDP values 
+#       from the model trained using data from 2012 to 2021.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -65,7 +63,7 @@ land_area <- lc_full_1deg  %>%
 # ------------------------------------------------------------------------------------------------------------------------------
 
 # load GDP
-# Note: here I also want the area in square km based on a spherical approximation of the Earth
+# Note: here also want the area in square km based on a spherical approximation of the Earth
 
 pred_1deg_with_prov_bound <- predict_data_results_1deg_with_prov_boundary %>% 
                              dplyr::select(c(cell_id, id, iso, year, unit_gdp_af_sum_rescl, pred_GCP_share_1deg, pred_GCP_share_1deg_rescaled, pred_GCP_1deg, geom))  %>% 
@@ -73,11 +71,9 @@ pred_1deg_with_prov_bound <- predict_data_results_1deg_with_prov_boundary %>%
                              left_join(land_area)  %>% 
                              mutate(pop_density_km2 = ifelse(land_area_km2 == 0, 0, pop/land_area_km2)) %>% 
                              st_as_sf() %>% 
-                             na.omit() # there is one cell for SAU that have missing data purely because of country border geom differences from different sources, ignore it.
+                             na.omit() # One cell for Saudi Arabia (SAU) has missing data due to differences in country border geometry between sources. This issue can be ignored.
 
 # ------------------------------------------------------------------------------------------------------------------------------
-# let's first try use 0 as threshold (meaning no extra adjust except for population = 0)
-
 # no extra adjustment
 pred_1deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust <- pred_1deg_with_prov_bound  %>% 
                                         mutate(pred_GCP_share_1deg = ifelse(pop_density_km2 <= 0, 0, pred_GCP_share_1deg))  %>%
@@ -193,7 +189,7 @@ pop_cell_1deg <- land_pop_extracted_region_level_1deg  %>%
         dplyr::select(c("cell_id", "id", "iso", "year", "pop"))  %>% 
         left_join(land_area) %>% 
         mutate(pop = ifelse(land_area_km2 == 0, 0, pop)) %>% # becasue pop should not live on water
-        na.omit() %>% # there is one cell for SAU that have missing data purely because of country border geometry differences from different sources, ignore it.
+        na.omit() %>% # One cell for Saudi Arabia (SAU) has missing data due to differences in country border geometry between sources. This issue can be ignored.
         group_by(year, iso, cell_id)  %>% 
         mutate(pop_cell = sum(pop))  %>% 
         distinct(year, iso, cell_id, .keep_all = TRUE)  %>% 

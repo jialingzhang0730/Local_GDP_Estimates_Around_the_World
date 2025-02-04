@@ -1,7 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Combine NTL data from urban and cropland across years and layers into one single file.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Combine NTL data from urban and cropland areas across all years and layers into a single file.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -27,10 +26,6 @@ library(sf)
 library(dplyr)
 library(raster)
 
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
-# ------------------------------------------------------------------------------------------------------------
 # 1deg
 # Now combine all years files
 years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021")

@@ -1,7 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file retrieves Kyrgyzstan's regional GDP data and processes their corresponding geometries.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves regional GDP data for Kyrgyzstan and processes the 
+#   corresponding geometries.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -12,7 +12,6 @@ library(readxl)
 library(units)
 library(sf)
 
-# ------------------------------------------------- #
 # Obtain GDP data: 
 
 KGZ_regional_rgdp <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KGZ/1010009 Валовой региональный продукт (ВРП) в текущих ценах..xlsx", skip = 3, n_max = 13)  %>% 
@@ -33,7 +32,6 @@ KGZ_regional_rgdp <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/
 
 write.csv(KGZ_regional_rgdp, "step2_obtain_gdp_data/temp/kgz_gdp_clean.csv", row.names = F)
 
-# ------------------------------------------------- #
 # Create shapefiles -----
 
 KGZ_regional_sf <- read_sf("step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
@@ -67,6 +65,3 @@ training_df <- KGZ_regional_rgdp %>%
 
 st_write(KGZ_regional_sf, "step2_obtain_gdp_data/temp/kgz_admin_2.gpkg", append = F)
 write.csv(training_df, "step2_obtain_gdp_data/temp/kgz_training_data.csv", row.names = F)
-
-
-# eof ----

@@ -1,7 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file retrieves China's provincial GDP data and processes their corresponding geometries.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves GDP data for China's provinces and processes the 
+#   corresponding geometries.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -12,7 +12,6 @@ library(readxl)
 library(units)
 library(sf)
 
-# ------------------------------------------------- #
 # Obtain GDP data:
 
 CHN_regional_rgdp <- read_xls("step2_obtain_gdp_data/inputs/gdp_data/regional/CHN/AnnualbyProvince.xls", skip = 3, n_max = 31)  %>% 
@@ -33,14 +32,13 @@ CHN_regional_rgdp <- read_xls("step2_obtain_gdp_data/inputs/gdp_data/regional/CH
 
 write.csv(CHN_regional_rgdp, "step2_obtain_gdp_data/temp/chn_gdp_clean.csv", row.names = F)
 
-# ------------------------------------------------- #
 # Create shapefiles -----
 
-# obtain the province geometry boundary
+# obtain the province geometry 
 CHN_regional_sf <- read_sf("step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
   filter(GID_0 == "CHN") %>%
   rename(name = NAME_1, iso = GID_0) %>%
-  filter(!name %in% c("Hong Kong", "Macau")) %>% # separate those two out as national GDP data do not contain those two regions
+  filter(!name %in% c("Hong Kong", "Macau")) %>% # Separate the two regions, as national GDP data does not include them.
   mutate(name = case_when(name == "Nei Mongol" ~ "Inner Mongolia",
                           name == "Ningxia Hui" ~ "Ningxia",
                           name == "Xinjiang Uygur" ~ "Xinjiang",
@@ -66,5 +64,3 @@ training_df <- CHN_regional_rgdp %>%
 
 st_write(CHN_regional_sf, "step2_obtain_gdp_data/temp/chn_admin_2.gpkg", append = F)
 write.csv(training_df, "step2_obtain_gdp_data/temp/chn_training_data.csv", row.names = F)
-
-# eof ----

@@ -1,8 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Extract different types of landcover areas for each cell
-# Execute the .sh file on the server to utilize its larger memory capacity and increased number of cores, enabling more efficient parallel processing for the task.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Extract various types of landcover areas for each cell.
+# Execute the .sh file on the server to utilize its larger memory capacity and increased 
+#   number of cores, enabling more efficient parallel processing for the task.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()

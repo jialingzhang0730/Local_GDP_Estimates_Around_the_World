@@ -1,15 +1,13 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file is to obtain Brazil's regional GDP data for year 2019 and 2020
-
-# Brazil's regional data for 2021 has not been published on OECD on the day we download the dataset (June 8th, 2024)
-# Thus, we can only obtain Brazil's GDP data through website "https://www.ibge.gov.br/en/statistics/economic/national-accounts/16855-regional-accounts-of-brazil.html"
-# Click "GDP under the point of view of Income (2010-2021) (in xls format)" 
-# save the downloaded file in "inputs/gdp_data/regional/BRA/PIB_Otica_Renda_UF.xls"
-
-# Note, should use "the point of view of Income" not "Production". This will give us exactly the same regional value as OECD for year 2012-2020
-
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves Brazil's regional GDP data for the years 2019 and 2020.
+# As of June 8, 2024, Brazil's regional GDP data for 2021 has not been published by the OECD. 
+#   Therefore, the data is sourced from the Brazilian Institute of Geography and Statistics (IBGE), 
+#   accessible at: https://www.ibge.gov.br/en/statistics/economic/national-accounts/16855-regional-accounts-of-brazil.html.
+# To obtain the data, download the "GDP under the point of view of Income (2010-2021) (in xls format)" 
+#   file and save it as "inputs/gdp_data/regional/BRA/PIB_Otica_Renda_UF.xls".
+# Note: Ensure to use the "Income" perspective, not "Production", as this aligns with the OECD's 
+#   regional values for the years 2012–2020.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -23,10 +21,7 @@ library(docxtractr)
 library(janitor)
 library(tibble)
 
-# ------------------------------------------------- #
-# Obtain GDP data:
-
-# obtain BRA 2021 subnational GDP data
+# obtain BRA 2021 subnational GDP data:
 
 # Initialize an empty list to store dataframes
 list_of_dfs <- list()
@@ -98,8 +93,5 @@ final_df <- bind_rows(list_of_dfs)  %>%
     TRUE ~ NA))
 
 write.csv(final_df, "step2_obtain_gdp_data/temp/BRA_2021.csv", row.names = F)
-
-# ------------------------------------------------- #
-# Create shapefiles -----
 
 # Geometries are obtained together with OECD countries in file "3_oecd.R"

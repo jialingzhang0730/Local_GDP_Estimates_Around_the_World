@@ -1,8 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to obtain true cell GDP for CHN
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves the true cell GDP for China (CHN).
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -263,12 +261,12 @@ all_data <- lapply(target_subfolder, function(subfolder) {
   return(combined_data)
 })
 
-# Combine all the data from each province into a single data frame
-# Note there are two cities have the same English name, but they belong to different province
+# Combine all the data from each province into a single data frame.
+# Note that two cities share the same English name, but they belong to different provinces.
 final_combined_data <- bind_rows(all_data) %>%  
   left_join(read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/CHN/city_province_list.xlsx")) %>% 
-  rename(GDP_curt_pri = value) %>% # note that they different provinces may not use the same unit, but it is fine because we only want to get the share
-  na.omit() # those omitted ones are not at city level, but larger regions
+  rename(GDP_curt_pri = value) %>% # Note that different provinces may use different units, but this is acceptable as we are only interested in obtaining the share.
+  na.omit() # The omitted entries are not at the city level, but represent larger regions.
 
 write_xlsx(final_combined_data, "step6_shocks_log_change/outputs/CHN_test/CHN_city_true_GDP_some_prov.xlsx")
 
@@ -352,7 +350,7 @@ chn_county_pop <- bind_rows(pop_extracted_list) %>%
 
 chn_county_GDPC <- chn_county_GDP  %>% 
                mutate(id = as.character(id)) %>% 
-               left_join(chn_county_pop, by = c("id", "iso", "year"))  %>% # good, every county that has GDP has population data
+               left_join(chn_county_pop, by = c("id", "iso", "year"))  %>% # every county that has GDP has population data
                mutate(county_GDPC = ifelse(pop == 0, 0, unit_rgdp_total_sum_rescaled / pop))  %>% 
                dplyr::select(c("id", "iso", "year", "county_GDPC"))
 

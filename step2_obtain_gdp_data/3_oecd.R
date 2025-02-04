@@ -1,12 +1,9 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file is to obtain regional GDP data from the OECD Regional Economy database
-
-# Data for year 2012-2020 are downloaded from OECS iLibrary
-# Data for year 2021 are donwloaded from the new platform "OECD Data Explorer": 
-#   Time downloaded is June 8th 2024, data may update after this time, please be very careful
-# ------------------------------------------------------------------------------------------------- #
-
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves regional GDP data from the OECD Regional Economy database.
+# Data for the years 2012-2020 were downloaded from the OECD iLibrary.
+# Data for the year 2021 was downloaded from the new platform, OECD Data Explorer, on June 8, 2024. 
+#   Please note that the data may be updated after this date, so exercise caution when referencing this dataset.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -32,7 +29,6 @@ library(XML)
 library(data.table)
 library(qgisprocess)
 
-# ------------------------------------------------- #
 # Obtain GDP data in current national price: year 2012 - 2020
 
 # Read GDP data
@@ -73,11 +69,11 @@ stru_more <- oced_stru  %>%
     mutate(iso = ifelse(iso == "NOMC", id, iso))  %>% 
     dplyr::select(-c(name))
 
-# organize GDP data: note the country dropped and year dropped for specific countries!!!!
-#   for CHN, IND and USA: we will collect from their official statistical agency
+# organize GDP data:
+# for CHN, IND and USA: data will be sourced directly from their respective official statistical agencies
 exclude_from_oecd <- c("ZAF", "IRL", "ISR", "CHN", "IND", "ISL", "USA", "LUX", "MLT")
 
-# JPN 2019 second level data are missing, we can filfill it by summing the third level data
+# The second-level regional GDP data for Japan (JPN) in 2019 is missing and will be inferred by summing the third-level data.
 JPN_2019 <- oecd_data  %>% 
     left_join(stru_more)  %>%
     filter(iso == "JPN", year == 2019)  %>% 
@@ -110,27 +106,28 @@ oecd_2012_2020_pre <- oecd_data  %>%
 # now we need to drop some redundant data: 
 #   for example: EE00 is just country level data, but the sample aready has EST as country level data
 #                AT130 repeats with AT13
+#                ...
 oecd_2012_2020 <- oecd_2012_2020_pre  %>% 
     group_by(iso, year) %>% 
     mutate(admin_levels = length(unique(admin_unit)),
           TL_2_length = sum(admin_unit == 2)) %>% 
     ungroup()  %>% 
-    filter(!(admin_unit == 2 & TL_2_length == 1)) %>% # by doing this, we remove those TL2 level data who actually just repeats with TL1 level data
-    mutate(admin_unit = ifelse(TL_2_length == 1 & admin_unit == 3, 2, admin_unit)) %>% # after above line, TL2 for certain countries are removed, we have to change TL3 into TL2
+    filter(!(admin_unit == 2 & TL_2_length == 1)) %>% # This process removes TL2-level data that duplicates TL1-level data.
+    mutate(admin_unit = ifelse(TL_2_length == 1 & admin_unit == 3, 2, admin_unit)) %>% # After removing the TL2 data for certain countries, the TL3 data should be reclassified as TL2.
     group_by(iso, year, parent_id) %>% 
     mutate(sub_units = n()) %>% 
     ungroup()  %>% 
-    mutate(redundant_admin = sub_units == 1 & admin_unit == 3) %>% # by doing this, we find those TL3 level data who actually just repeats with the TL2 level data
-    mutate(redundant_admin = ifelse(redundant_admin, parent_id, NA)) %>% # find out those repeative TL3 level data's parent id
-    mutate(drop = id %in% setdiff(unique(redundant_admin), NA))  %>% # we want to remove those repeated TL2 level data because we need TL3 level information
+    mutate(redundant_admin = sub_units == 1 & admin_unit == 3) %>% # This process identifies TL3-level data that duplicates TL2-level data.
+    mutate(redundant_admin = ifelse(redundant_admin, parent_id, NA)) %>% # Identify the parent id of the repetitive TL3-level data.
+    mutate(drop = id %in% setdiff(unique(redundant_admin), NA))  %>% # We aim to remove the repeated TL2-level data, and keep TL3-level information.
     filter(!drop) %>% # drop it
     mutate(parent_id = ifelse(!is.na(redundant_admin), grandparent_id, parent_id),
-           parent_name = ifelse(!is.na(redundant_admin), grandparent_name, parent_name))  %>% # change those TL3 level data's parent_id and parent_name, their parents should be country, not TL2
+           parent_name = ifelse(!is.na(redundant_admin), grandparent_name, parent_name))  %>% # Update the parent_id and parent_name for the TL3-level data, assigning the parent as the country rather than TL2.
     group_by(iso) %>% 
-    mutate(recode = !2 %in% admin_unit) %>% # find out those who do not have TL2 in the current group
+    mutate(recode = !2 %in% admin_unit) %>% # Identify the entries that do not have a corresponding TL2 level within the current group.
     ungroup()  %>% 
-    mutate(admin_unit = ifelse(recode & admin_unit == 3, 2, admin_unit)) %>%  # for those who do not have TL2 but have TL3, make TL3 as TL2
-    mutate(parent_id = ifelse(admin_unit == 3 & parent_id == iso, NA, parent_id)) %>% #  change the parent_id of those TL3 level data who repetes TL2 information to NA, because their parent_id are dropped
+    mutate(admin_unit = ifelse(recode & admin_unit == 3, 2, admin_unit)) %>%  # For entries without TL2 but with TL3, reclassify the TL3 data as TL2.
+    mutate(parent_id = ifelse(admin_unit == 3 & parent_id == iso, NA, parent_id)) %>% # Set the parent_id of the TL3-level data that duplicates TL2 information to NA, as their parent id have been removed.
     dplyr::select(-c(admin_levels, TL_2_length, recode, redundant_admin, sub_units, drop, grandparent_id, grandparent_name))
 
 # obtain oecd year 2021's data
@@ -152,13 +149,13 @@ oecd_2021 <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD.
   mutate(admin_unit = ifelse(substr(id,1,3) == "NZ0", 2, admin_unit)) # change NZL's subnational regions' admin_unit to 2 to merge with "oecd_2012_2020"'s data, currently, it is 3
 
 # merge them: be careful if the definition of id changes
-#   You can check their "OECD Territorial correspondence" to check 
+#   Verify by checking the "OECD Territorial Correspondence" for confirmation.
 oecd_regional_rgdp <- oecd_2012_2020  %>% 
   distinct(admin_unit, name, id, parent_id, parent_name, iso, .keep_all = FALSE)  %>% 
   mutate(year = 2021)  %>% 
   left_join(oecd_2021 %>% mutate(admin_unit = as.character(admin_unit)))  %>%  
-  mutate(rgdp_total = ifelse(id == "NO0B1" & year == 2021, 0, rgdp_total))  %>% # the value for "NO0B1" is missing, but it is fine, because the GDP for each location is 0
-  filter(!iso %in% c("BGR", "BRA", "EST", "HRV", "IDN", "JPN", "LVA", "PER", "ROU", "RUS")) %>% # at the time we donwload the data, those countries 2021's data are missing
+  mutate(rgdp_total = ifelse(id == "NO0B1" & year == 2021, 0, rgdp_total))  %>% # The value for "NO0B1" is missing; however, this is acceptable as the GDP for this location is 0
+  filter(!iso %in% c("BGR", "BRA", "EST", "HRV", "IDN", "JPN", "LVA", "PER", "ROU", "RUS")) %>% # The 2021 data for these countries is missing at the time of data download.
   bind_rows(oecd_2012_2020)
 
 # obtain TL1 data

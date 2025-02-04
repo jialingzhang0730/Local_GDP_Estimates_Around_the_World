@@ -1,7 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file retrieves Philippines's regional GDP data and processes their corresponding geometries.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves regional GDP data for Philippines and processes the 
+#   corresponding geometries.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -12,7 +12,6 @@ library(readxl)
 library(units)
 library(sf)
 
-# ------------------------------------------------- #
 # Obtain GDP data: 
 
 PHL_regional_rgdp <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/PHL/GRDP_Reg_2018PSNA_2000-2023.xlsx", skip = 9, n_max = 18)  %>% 
@@ -33,7 +32,6 @@ PHL_regional_rgdp <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/
 
 write.csv(PHL_regional_rgdp, "step2_obtain_gdp_data/temp/phl_gdp_clean.csv", row.names = F)
 
-# ------------------------------------------------- #
 # Create shapefiles -----
 
 PHL_regional_sf <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>%  
@@ -59,5 +57,3 @@ training_df <- PHL_regional_rgdp %>%
 
 st_write(PHL_regional_sf, "step2_obtain_gdp_data/temp/phl_admin_2.gpkg", append = F)
 write.csv(training_df, "step2_obtain_gdp_data/temp/phl_training_data.csv", row.names = F)
-
-# eof ----

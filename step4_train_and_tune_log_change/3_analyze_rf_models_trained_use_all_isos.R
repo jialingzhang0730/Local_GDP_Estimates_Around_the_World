@@ -1,12 +1,11 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to check the performance of our models trained in R scripts "2_put_all_isos_to_train_xdeg.R"
-# 
-# The formula for GDP loss used in this script has a value 2 in the denominator because misallocated GDP will be double counted
-# 
-# All the R2 and GDP loss will show within sample out of bag predictions because all data are used to train the model
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file evaluates the performance of the models trained in the R script 
+#   "2_put_all_isos_to_train_xdeg.R".
+# The formula for GDP loss used in this script includes a value of 2 in the 
+#   denominator to account for misallocated GDP being double-counted.
+# All R² and GDP loss values will be based on out-of-bag predictions, as all data 
+#   are used to train the model.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -511,8 +510,7 @@ save_latex_stargazer(GDP_loss_0_25deg_all_train, "step4_train_and_tune_log_chang
 save_latex_stargazer(R2_chan_0_25deg_all_train, "step4_train_and_tune_log_change/outputs/R2_annual_chan_0_25deg_all_train.tex")
 
 # ------------------------------------------------------------------------------------------------------------------------------------
-
-# draw the scatter plot compare cell predictions GCP to the truth
+# draw the scatter plot compare cell predictions to the truth
 # obtain "data_results_full_xdeg" through above codes
 
 p1 <- ggplot(data_results_full_1deg %>% filter(!(GCP_1deg == 0 | pred_GCP_1deg == 0)), aes(x=log(GCP_1deg), y = log(pred_GCP_1deg))) +

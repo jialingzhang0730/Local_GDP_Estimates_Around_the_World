@@ -1,7 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Obtain the population data for each county or subnational region in the training sample
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Retrieve the population data for each county or subnational region included 
+#   in the training sample.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -21,14 +21,9 @@ library(gdata)
 library(units)
 library(tidyverse)
 
-# please change to your specific folder
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
-# ------------------------------------------------- #        
 # read the polygons
 simplified_poly <- read_sf("step2_obtain_gdp_data/outputs/training_poly_sample.gpkg")
 
-# ------------------------------------------------- #        
 # Obtain training isos county-level population (LandScan)
 tic("Population")
 
@@ -59,9 +54,8 @@ for (year in years){
           }
 }
 
-# ------------------------------------------------- #        
-# Don't forget that Alaska's population should be excluded from USA's national population
-# I also double checked that the IMF USA national population does not include US territories, that is what we want
+# Ensure that Alaska's population is excluded from the USA's national population.
+# It seems that the IMF's USA national population data does not include US territories, which aligns with our requirements.
 
 alaska <- read_sf("step2_obtain_gdp_data/outputs/world_poly.gpkg")  %>% 
     filter(iso == "Ala") # remember we assign Alaska a fake iso code "Ala"
@@ -75,14 +69,13 @@ alaska_pop <- mclapply(population_files, mc.cores = 5, FUN = function(filename){
     do.call(rbind, .)  %>% 
     as.data.frame()  %>% 
     dplyr::select(-c(geom))  %>% 
-    mutate(id = "Ala", iso = "USA") # change the iso name, so that we can change US county's population share below
+    mutate(id = "Ala", iso = "USA") # allow for adjustments to the population share of US counties below
 
-# let me save it because we will still use alaska's population later
+# Save Alaska's population, as it will be used later in the analysis.
 write.csv(alaska_pop, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/alaska_population.csv")
 
-# ------------------------------------------------- # 
-# actually we want to get each county's national population share here, so that we can rescale to match the sum with national population
-# Thus, what Alaska should affect is the USA county's population share below
+# The goal is to obtain each county's national population share to ensure the sum matches the national population.
+# Thus, Alaska’s population should only affect the population share of USA counties below.
 
 land_pop_extracted_train_county <- bind_rows(land_pop_full, alaska_pop)  %>% 
                       group_by(iso, year)  %>% 
@@ -93,7 +86,7 @@ land_pop_extracted_train_county <- bind_rows(land_pop_full, alaska_pop)  %>%
 save(land_pop_extracted_train_county, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/land_pop_extracted_train_county.RData")
 
 
-# Obtain the average areas of those subnational units for each country
+# Retrieve the average areas of the subnational units for each country.
 
 sub_area <- land_pop_extracted_train_county %>% 
     filter(year == 2012) %>% 
@@ -106,6 +99,3 @@ sub_area <- land_pop_extracted_train_county %>%
     distinct(iso, avr_area)
 
 write.csv(sub_area, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_subnational_area.csv")
-
-
-

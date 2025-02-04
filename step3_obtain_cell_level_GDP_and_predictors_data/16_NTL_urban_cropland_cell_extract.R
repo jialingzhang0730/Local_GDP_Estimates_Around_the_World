@@ -1,6 +1,7 @@
-# --------------- Task --------------- #
-# This file is to extract nighttime light (NTL) emissions exclusively from the urban areas or from the cropland areas. 
-# ------------------------------------ #
+# --------------------------------- Task Summary --------------------------------- #
+# This file extracts nighttime light (NTL) emissions exclusively from urban areas 
+#   or cropland areas.
+# -------------------------------------------------------------------------------- #
 
 library(gdalUtilities)
 library(parallel)
@@ -28,8 +29,8 @@ if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") 
   setwd(Sys.getenv("PBS_O_WORKDIR"))
 }
 
-# # ----------------
-# # Now extract NTL from urban and cropland 1deg 
+# ----------------
+# Now extract NTL from urban and cropland 1deg 
 
 data_folder <- "step3_obtain_cell_level_GDP_and_predictors_data/inputs/NTL_VNP46A4"
 year_folders_pre <- list.dirs(data_folder, recursive = FALSE, full.names = FALSE)
@@ -107,8 +108,8 @@ NTL <- mclapply(year_folders, mc.cores = 1, FUN= function(year_folder){
 })
 toc()
 
-# # ----------------
-# # Now extract NTL from urban and cropland 0.5deg 
+# ----------------
+# Now extract NTL from urban and cropland 0.5deg 
 
 data_folder <- "step3_obtain_cell_level_GDP_and_predictors_data/inputs/NTL_VNP46A4"
 year_folders_pre <- list.dirs(data_folder, recursive = FALSE, full.names = FALSE)

@@ -1,7 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Combine NTL data across years and layers into one single file.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Combine NTL data from all years and layers into a single file.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -26,9 +25,6 @@ library(future.apply)
 library(sf)
 library(dplyr)
 
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
-# ------------------------------------------------------------------------------------------------------------
 # 1deg
 # Now combine all years files
 years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021","2022")
@@ -56,7 +52,6 @@ NTL_full_1deg <- NTL_full
 
 save(NTL_full_1deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/NTL_full_1deg.RData")
 
-# ------------------------------------------------------------------------------------------------------------
 # 0_5 degree
 # Now combine all years files
 years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021","2022")
@@ -83,7 +78,6 @@ for (year in years){
 NTL_full_0_5deg <- NTL_full
 save(NTL_full_0_5deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/NTL_full_0_5deg.RData")
 
-# ------------------------------------------------------------------------------------------------------------
 # 0_25 degree
 # Now combine all years files
 years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021","2022")

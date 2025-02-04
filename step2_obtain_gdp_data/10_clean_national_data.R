@@ -1,18 +1,16 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file is to obtain national data, we need five types of national data:
-#     constant international$ PPP adjusted; 
-#     current international$ PPP adjusted;
-#     current US$; 
-#     constant US$: IMF does not provide this, we need to calculate ourselves
-#     population
-
-# Use IMF data first, instead of World Bank data. Because IMF map fiscal year gdp data to calendar year for
-#   those countries that report GDP on Fiscal Year basis. However, World Bank data do not do so.
-# If IMF data miss some countries or years, use World Bank's data or UN data to fulfill it
-
-# Turn all units to billions xxx for consistency across scripts.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves national data, including the following:
+#   1. Constant international dollars (PPP adjusted)
+#   2. Current international dollars (PPP adjusted)
+#   3. Current US dollars
+#   4. Constant US dollars (not provided by IMF, needs to be calculated)
+#   5. Population data
+# IMF data should be used as the primary source, as the IMF adjusts fiscal year 
+#   GDP data to calendar years for countries that report on a fiscal year basis. 
+#   The World Bank, however, does not make this adjustment. If IMF data is missing
+#   for certain countries or years, use World Bank or UN data to supplement.
+# For consistency across scripts, all values should be converted to billions (xxx).
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -25,7 +23,6 @@ library(jsonlite)
 library(httr)
 library(readxl)
 
-# ------------------------------------------------- #
 # GDP data
 
 # we can first get most countries' GDP data from IMF
@@ -183,8 +180,8 @@ wb_gdp_const_2017_PPP <- wb_gdp_const_2021_PPP  %>%
 
 # ------------------------------------------------- #
 # However, those three countries still have missing data, so we need to obtain them from UNdata
-#   Note, the downloaded data from UNdata are Per capita GDP at current prices - US dollars!!!!!
-#   Even though in the downloaded file, it said "Gross Domestic Product (GDP)", it is NOT!!! It is very misleading
+#   Note, the downloaded data from UNdata are Per capita GDP at current prices - US dollars!
+#   Even though in the downloaded file, it said "Gross Domestic Product (GDP)", it is NOT.
 #   That means we need population data
 iso_get_fm_un <- c("CUB", "ERI", "PRK")
 pop_cub_eri_prk <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/national/world_bank_data/population/API_SP.POP.TOTL_DS2_en_excel_v2_294626.xls", sheet = "Data", skip = 3)  %>% 
@@ -194,7 +191,7 @@ pop_cub_eri_prk <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/national/wo
   rename(population = value)  %>% 
   dplyr::select(c(iso, year, population, Country))  %>% 
   mutate(year = as.numeric(year))  %>% 
-  filter(year >= 2012, year <= 2022) # we only need year 2012-2022; I include year 2022 so that when you update, it is easier.
+  filter(year >= 2012, year <= 2022) # We only need data from 2012 to 2022. The inclusion of 2022 is intentional to facilitate future updates.
 
 # GDP in current US dollars
 un_gdp_crt_us <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/national/UN_data/UNdata_Export_20240613_003754887.csv")  %>% 

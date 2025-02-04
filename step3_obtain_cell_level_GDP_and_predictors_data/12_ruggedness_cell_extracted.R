@@ -1,7 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Obtain cell's ruggedness
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Retrieve the ruggedness values for each cell.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -26,10 +25,6 @@ library(future.apply)
 library(sf)
 library(dplyr)
 
-# please change to your specific folder
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
-# ------------------------------------------------------------------------------------------------------------
 # 1 degree
 
 simplified_poly <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/world_province_1deg_with_cellid.gpkg")  %>% 
@@ -46,7 +41,6 @@ mean_ruggedness <- exact_extract(ruggedness, simplified_poly, fun = 'mean',
 write.csv(mean_ruggedness, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/mean_ruggedness_1deg.csv", row.names = F)
 toc()
 
-# ------------------------------------------------------------------------------------------------------------
 # 0.5 degree
 
 simplified_poly <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/world_province_0_5deg_with_cellid.gpkg")  %>% 
@@ -64,7 +58,6 @@ mean_ruggedness <- exact_extract(ruggedness, simplified_poly, fun = 'mean',
 write.csv(mean_ruggedness, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/mean_ruggedness_0_5deg.csv", row.names = F)
 toc()
 
-# ------------------------------------------------------------------------------------------------------------
 # 0.25 degree
 
 simplified_poly <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/world_province_0_25deg_with_cellid.gpkg")  %>% 

@@ -1,8 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to predict GDP using the model trained using year 2012-2019. It will be used in "step6_shocks/2_COVID_shock.R"
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file performs post-adjustment on the predicted 0.5-degree cell GDP values 
+#       from the model trained using data from 2012 to 2019.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -65,7 +64,7 @@ land_area <- lc_full_0_5deg  %>%
 # ------------------------------------------------------------------------------------------------------------------------------
 
 # load GDP
-# Note: here I also want the area in square km based on a spherical approximation of the Earth
+# Note: here also want the area in square km based on a spherical approximation of the Earth
 
 pred_0_5deg_with_prov_bound <- predict_data_results_0_5deg_with_prov_boundary_model_up_to_2019 %>% 
                              dplyr::select(c(cell_id, subcell_id, id, iso, year, unit_gdp_af_sum_rescl, pred_GCP_share_0_5deg, pred_GCP_share_0_5deg_rescaled, pred_GCP_0_5deg, geom))  %>% 

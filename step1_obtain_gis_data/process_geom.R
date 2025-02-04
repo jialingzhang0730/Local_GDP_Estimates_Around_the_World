@@ -1,6 +1,6 @@
-# --------------- Task --------------- #
-# This file is to obtain geometry data for later use
-# ------------------------------------ #
+# --------------------------------- Task Summary --------------------------------- #
+# This file is responsible for retrieving geometry data for subsequent processing.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()

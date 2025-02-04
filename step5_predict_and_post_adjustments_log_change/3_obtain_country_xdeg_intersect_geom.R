@@ -1,11 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to obtain the geometry of country intersected with xdeg. Those will be used in the R script
-#   "4_post_adjustment_filter_out_low_pop_density_xdeg"
-#
-# Note that the resulted geomtries are without large inland waters
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves the geometry of countries intersected with the xdeg grid, 
+#   which will be used in the R script "4_post_adjustment_filter_out_low_pop_density_xdeg".
+# Note that the resulting geometries exclude large inland waters.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -35,7 +32,7 @@ qgis_run_algorithm(
     OUTPUT = "step5_predict_and_post_adjustments_log_change/outputs/country_0_25deg_intersected.gpkg"
 )
 
-# also generate to shapefile because some users are not able to use gpkg files
+# Generate the output as a shapefile, as some users may not be able to use GPKG files.
 deg1 <- st_read("step5_predict_and_post_adjustments_log_change/outputs/country_1deg_intersected.gpkg")
 st_write(deg1, "step5_predict_and_post_adjustments_log_change/outputs/deg_geom_shapefile/geom_1deg.shp", driver = "ESRI Shapefile", delete_dsn = TRUE)
 

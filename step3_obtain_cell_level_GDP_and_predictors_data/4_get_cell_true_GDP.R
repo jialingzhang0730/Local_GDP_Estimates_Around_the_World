@@ -1,10 +1,9 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Obtain cell level GDP data
-
-# The idea is to calculate the true cell GDP and train the model on that
-# The true cell GDP is calculated through GDPC*population, which we believe is close to truth for training countries.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Retrieve cell-level GDP data.
+# The objective is to calculate the true cell GDP and train the model on that data.
+# The true cell GDP is calculated as GDPC * population, which is believed to closely 
+#   approximate the actual values for the training countries.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -29,17 +28,12 @@ library(exactextractr)
 library(purrr)
 library(qgisprocess)
 
-# please change to your specific folder
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
-# ------------------------------------------------- # 
 # Obtain county GDP
-# DOSE has some regional data missing, please be carefull!!!!!!!!!!!! Very easy to make mistake
+# DOSE has some regional data missing, please be carefull with this
 county_GDP <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/rgdp_total_training_data.csv")  %>% 
   filter(!(iso == "THA" & year %in% c(2012, 2013, 2019))) %>% # THA has missing regional data for 2012, 2013 and 2019
   filter(!(iso == "ECU" & year %in% c(2012, 2013, 2014))) # ECU has missing regional data for 2012, 2013 and 2014
 
-# ------------------------------------------------- # 
 # Obtain county GDP per capita
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/land_pop_extracted_train_county.RData")
 
@@ -48,7 +42,7 @@ county_pop <- land_pop_extracted_train_county %>%
 
 county_GDPC <- county_GDP  %>% 
   mutate(id = ifelse(id == "Bangsamoro Autonomous Region\nin Muslim Mindanao_PHL", "Bangsamoro Autonomous Region\r\nin Muslim Mindanao_PHL", id))  %>% 
-  left_join(county_pop, by = c("id", "iso", "year")) %>% # good, every county that has GDP has population data
+  left_join(county_pop, by = c("id", "iso", "year")) %>% # Ensure that every county with GDP data also has corresponding population data.
   mutate(pop_rescaled = round(pop_share * national_population))  %>% 
   mutate(county_GDPC = ifelse(pop_rescaled == 0, 0, unit_rgdp_total / pop_rescaled))  %>% 
   dplyr::select(c("id", "iso", "year", "county_GDPC", "geom"))  %>% 
@@ -56,9 +50,7 @@ county_GDPC <- county_GDP  %>%
 
 st_write(county_GDPC, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_GDPC.gpkg", append = F)
 
-# ------------------------------------------------- # 
 # obtain cell grids
-
 # Add 1degree cells 
 grid <- rast(resolution = 1, crs = "epsg:4326") %>% # by doing this, the world is seperated into 1°x1° cell: 180*360=64800
   setValues(NA) %>% st_as_stars() %>% st_as_sf(na.rm = F) %>%
@@ -286,13 +278,13 @@ alaska_pop <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/
 county_cell_pop_extracted_1deg_GDP <- county_cell_pop_extracted_1deg  %>% 
                                       as.data.frame()  %>% 
                                       dplyr::select(c(cell_id, id, iso, year, county_GDPC, pop))  %>% 
-                                      mutate(iso = ifelse(iso == "USA", paste0("USA_", substr(id, 1, 2)), iso)) %>% # by doing this, we change the state as new country
-                                      left_join(county_GDP_change_USA) %>%  # because we want to get the national GDP and national population to further rescale
-                                      bind_rows(alaska_pop)  %>%  # add alaska here so that we can have its population                                    
+                                      mutate(iso = ifelse(iso == "USA", paste0("USA_", substr(id, 1, 2)), iso)) %>% # By doing this, the state is treated as a new country.
+                                      left_join(county_GDP_change_USA) %>%  # to obtain the national GDP and national population for further rescaling.
+                                      bind_rows(alaska_pop)  %>%  # Include Alaska here to ensure its population is accounted for.
                                       group_by(year, iso_real)  %>%                                   
                                       mutate(GDP_subcell = county_GDPC*round(national_population*pop/sum(pop)))  %>% 
                                       ungroup()  %>% 
-                                      filter(id != "Ala")  %>% # remove Alaska because we don't need it anymore
+                                      filter(id != "Ala")  %>% # Remove Alaska, as it is no longer needed.
                                       group_by(iso, year)  %>% 
                                       mutate(GDP_subcell_rescl = GDP_subcell * state_total_GDP/sum(GDP_subcell))  %>% 
                                       ungroup()
@@ -311,13 +303,13 @@ save(training_iso_1deg_cell_GCP, file = "step3_obtain_cell_level_GDP_and_predict
 county_cell_pop_extracted_0_5deg_GDP <- county_cell_pop_extracted_0_5deg  %>% 
                                       as.data.frame()  %>% 
                                       dplyr::select(c(cell_id, subcell_id, id, iso, year, county_GDPC, pop))  %>% 
-                                      mutate(iso = ifelse(iso == "USA", paste0("USA_", substr(id, 1, 2)), iso))  %>% # by doing this, I change the state as new country                                                                        
-                                      left_join(county_GDP_change_USA)  %>%  # because I want to get the national GDP and national population to further rescale
-                                      bind_rows(alaska_pop)  %>%  # add alaska here so that we can have its population              
+                                      mutate(iso = ifelse(iso == "USA", paste0("USA_", substr(id, 1, 2)), iso))  %>% # By doing this, the state is treated as a new country.                                                                       
+                                      left_join(county_GDP_change_USA)  %>%  # to obtain the national GDP and national population for further rescaling.
+                                      bind_rows(alaska_pop)  %>%  # Include Alaska here to ensure its population is accounted for.
                                       group_by(year, iso_real)  %>%                                   
                                       mutate(GDP_subcell = county_GDPC*round(national_population*pop/sum(pop)))  %>% 
                                       ungroup()  %>% 
-                                      filter(id != "Ala")  %>% # remove Alaska because we don't need it anymore
+                                      filter(id != "Ala")  %>% # Remove Alaska, as it is no longer needed.
                                       group_by(iso, year)  %>% 
                                       mutate(GDP_subcell_rescl = GDP_subcell * state_total_GDP/sum(GDP_subcell))  %>% 
                                       ungroup()
@@ -335,13 +327,13 @@ save(training_iso_0_5deg_cell_GCP, file = "step3_obtain_cell_level_GDP_and_predi
 county_cell_pop_extracted_0_25deg_GDP <- county_cell_pop_extracted_0_25deg  %>% 
                                       as.data.frame()  %>% 
                                       dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, id, iso, year, county_GDPC, pop))  %>% 
-                                      mutate(iso = ifelse(iso == "USA", paste0("USA_", substr(id, 1, 2)), iso))  %>% # by doing this, I change the state as new country
-                                      left_join(county_GDP_change_USA)  %>%  # because I want to get the national GDP and national population to further rescale
-                                      bind_rows(alaska_pop)  %>%  # add alaska here so that we can have its population     
+                                      mutate(iso = ifelse(iso == "USA", paste0("USA_", substr(id, 1, 2)), iso))  %>% # By doing this, the state is treated as a new country.
+                                      left_join(county_GDP_change_USA)  %>%  # to obtain the national GDP and national population for further rescaling.
+                                      bind_rows(alaska_pop)  %>%  # Include Alaska here to ensure its population is accounted for.
                                       group_by(year, iso_real)  %>%                                   
                                       mutate(GDP_subcell_0_25 = county_GDPC*round(national_population*pop/sum(pop)))  %>% 
                                       ungroup()  %>% 
-                                      filter(id != "Ala")  %>% # remove Alaska because we don't need it anymore
+                                      filter(id != "Ala")  %>% # Remove Alaska, as it is no longer needed.
                                       group_by(iso, year)  %>% 
                                       mutate(GDP_subcell_0_25_rescl = GDP_subcell_0_25 * state_total_GDP/sum(GDP_subcell_0_25))  %>% 
                                       ungroup() 

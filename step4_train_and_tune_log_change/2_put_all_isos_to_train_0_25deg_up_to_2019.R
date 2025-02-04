@@ -1,11 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-#
-# This file is to test if we want to predict future year's data, is it necessary to put that year in the training sample.
-# This R file does not put year 2020 in the training sample, but "4_put_all_isos_to_train_xdeg.R" put all possible data in the training sample
-#
-# This file is for 0.25 degree model
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file trains the 0.25-degree random forest model using data from 2012 to 2019.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()

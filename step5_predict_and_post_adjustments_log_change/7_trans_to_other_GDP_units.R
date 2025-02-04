@@ -1,10 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
+# --------------------------------- Task Summary --------------------------------- #
 # This file is to change the units of the GDP data to others. Previously when we train the model (the variable national_gdpc) and 
 #       draw some plots, the unit is in constant 2017 USD. Now we will rescale the data to other units:
 #       current USD, current PPP-adjusted international$, constant 2017 PPP-adjusted international$ 
-# ------------------------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()

@@ -1,8 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Extract cell's NTL values. 
-# Execute the .sh file on the server to utilize its larger memory capacity and increased number of cores, enabling more efficient parallel processing for the task.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Extract the NTL values for each cell. 
+# Execute the .sh file on the server to utilize its larger memory capacity and increased 
+#   number of cores, enabling more efficient parallel processing for the task.
+# -------------------------------------------------------------------------------- #
 
 library(gdalUtilities)
 library(parallel)

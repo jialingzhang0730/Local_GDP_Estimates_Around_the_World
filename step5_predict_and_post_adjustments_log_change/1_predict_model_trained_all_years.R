@@ -1,8 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to predict the rest of the cells using the model trained in step4 "4_put_all_isos_to_train_xdeg.R"
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file predicts the remaining cells using the model trained in step 4 folder, 
+#   file "2_put_all_isos_to_train_xdeg.R"
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()

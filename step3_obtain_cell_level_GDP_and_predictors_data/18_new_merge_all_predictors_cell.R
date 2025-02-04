@@ -1,8 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
+# --------------------------------- Task Summary --------------------------------- #
 # This file is to combine those predictors and dependent variable to create the dataset for training
-# ------------------------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -20,9 +18,6 @@ library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
 
 # ------------------------------------------------------------------------------------------------------------
 # 1 degree
@@ -123,7 +118,7 @@ lc_put_in_model <- lc_full_1deg  %>%
        mutate(cropland_share = cropland_full/sum(cropland_full))  %>% 
        mutate(shrub_share = shrub/sum(shrub))  %>% 
        ungroup()  %>% 
-       replace(is.na(.), 0) # some country does not have a specific landcover type, for example, Austria does not have "herbacous", so the share is 0/0, which turns to NA. So we assign value 0 to those.
+       replace(is.na(.), 0) # some country does not have a specific landcover type, so the share is 0/0, which turns to NA. So we assign value 0 to those.
 
 
 # load ruggedness
@@ -192,7 +187,7 @@ predict_data_complete_1deg <- training_iso_1deg_cell_GCP  %>%
                               mutate(GCP_share_1deg = ifelse(GCP_1deg == 0, 0, GCP_1deg/sum(GCP_1deg)))  %>% 
                               ungroup()  %>% 
                               left_join(predictors_put_in_model_1deg_revi) %>%
-                              na.omit() # some cells are missing simply because of the geometry of those cells, DOSE's geometry's boundaries are slightly different from us.
+                              na.omit() # Some cells are missing due to differences in geometry. The boundaries of DOSE's geometry are slightly different from ours.
 
 save(predict_data_complete_1deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_1deg.RData")
 
@@ -294,7 +289,7 @@ lc_put_in_model <- lc_full_0_5deg  %>%
        mutate(cropland_share = cropland_full/sum(cropland_full))  %>% 
        mutate(shrub_share = shrub/sum(shrub))  %>% 
        ungroup()  %>% 
-       replace(is.na(.), 0) # some country does not have a specific landcover type, for example, Austria does not have "herbacous", so the share is 0/0, which turns to NA. So we assign value 0 to those.
+       replace(is.na(.), 0) # some country does not have a specific landcover type, so the share is 0/0, which turns to NA. So we assign value 0 to those.
 
 # load ruggedness
 rug_put_in_model <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/mean_ruggedness_0_5deg.csv")  %>% 
@@ -364,7 +359,7 @@ predict_data_complete_0_5deg <- training_iso_0_5deg_cell_GCP  %>%
                                 mutate(GCP_share_0_5deg = ifelse(GCP_0_5deg == 0, 0, GCP_0_5deg/sum(GCP_0_5deg)))  %>% 
                                 ungroup()  %>% 
                                 left_join(predictors_put_in_model_0_5deg_revi)  %>% 
-                                na.omit() # some cells are missing simply because of the geometry of those cells, DOSE's geometry's boundarries are slightly different from us.
+                                na.omit() # Some cells are missing due to differences in geometry. The boundaries of DOSE's geometry are slightly different from ours.
 
 save(predict_data_complete_0_5deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_0_5deg.RData")
 
@@ -467,7 +462,7 @@ lc_put_in_model <- lc_full_0_25deg  %>%
        mutate(cropland_share = cropland_full/sum(cropland_full))  %>% 
        mutate(shrub_share = shrub/sum(shrub))  %>% 
        ungroup()  %>% 
-       replace(is.na(.), 0) # some country does not have a specific landcover type, for example, Austria does not have "herbacous", so the share is 0/0, which turns to NA. So we assign value 0 to those.
+       replace(is.na(.), 0) # some country does not have a specific landcover type, so the share is 0/0, which turns to NA. So we assign value 0 to those.
 
 # load ruggedness
 rug_put_in_model <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/mean_ruggedness_0_25deg.csv")  %>% 
@@ -537,7 +532,7 @@ predict_data_complete_0_25deg <- training_iso_0_25deg_cell_GCP  %>%
                                 mutate(GCP_share_0_25deg = ifelse(GCP_0_25deg == 0, 0, GCP_0_25deg/sum(GCP_0_25deg)))  %>% 
                                 ungroup()  %>% 
                                 left_join(predictors_put_in_model_0_25deg_revi)  %>% 
-                                na.omit() # some cells are missing simply because of the geometry of those cells, DOSE's geometry's boundarries are slightly different from us.
+                                na.omit() # Some cells are missing due to differences in geometry. The boundaries of DOSE's geometry are slightly different from ours.
 
 save(predict_data_complete_0_25deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_0_25deg.RData")
 

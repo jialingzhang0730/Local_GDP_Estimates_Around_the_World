@@ -1,8 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to compare this predictions with our formal benchmark model in section "step4_train_and_tune_log_change" (also our model in the paper)
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file compares the predictions with the formal benchmark model in 
+#   "step4_train_and_tune_log_change" (as well as our model in the paper).
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -347,7 +346,7 @@ combined_plot <- plot_grid(p1, p3, p5, p2, p4, p6, ncol = 3)
 ggsave("step7_robust_analysis/model_tune_MSE/outputs/compare_mmse_vs_myoy_all_deg.png", plot = combined_plot, width = 22, height = 14, bg = "white")
 
 # ------------------------------------------------------------------------------------------------------------------------------------
-# now I want to do the same tests to compare:
+# now conduct the same tests to compare:
 
 
 # first test: china test
@@ -427,10 +426,7 @@ combined_data <- bind_rows(yr_group_lvl_pred2, yr_group_chan_pred2) %>%
     plot_group == "Year-over-year Log Change: Post-COVID 2021" ~ "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)"
   ))
 
-# Create the combined plot with facet_wrap, using nrow and ncol for layout
-# title = "True vs Predicted GDP in China's Seven Leading Provinces",
-# subtitle = "1-dgeree cells; Unit: billion const 2017 USD",
-       
+# Create the combined plot
 combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_GCP_1deg, grate_true), 
                                            y = ifelse(type == "Log Level:", log_pred_GCP_1deg, grate_pred))) +
   geom_point(size = 1, alpha = 0.7, color = "blue") +
@@ -538,7 +534,7 @@ combined_data <- bind_rows(yr_group_lvl_pred2, yr_group_chan_pred2) %>%
     plot_group == "Year-over-year Log Change: Post-COVID 2021" ~ "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)"
   ))
 
-# Create the combined plot with facet_wrap, using nrow and ncol for layout
+# Create the combined plot
 combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_GCP_1deg, grate_true), 
                                            y = ifelse(type == "Log Level:", log_pred_GCP_1deg, grate_pred))) +
   geom_point(size = 1, alpha = 0.7, color = "blue") +
@@ -636,7 +632,7 @@ combined_data <- bind_rows(yr_group_lvl_pred2, yr_group_chan_pred2) %>%
     plot_group == "Year-over-year Log Change: Post-COVID 2021" ~ "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)"
   ))
 
-# Create the combined plot with facet_wrap, using nrow and ncol for layout
+# Create the combined plot
 combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_GCP_1deg, grate_true), 
                                            y = ifelse(type == "Log Level:", log_pred_GCP_1deg, grate_pred))) +
   geom_point(size = 1, alpha = 0.7, color = "blue") +

@@ -1,7 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file retrieves India's provincial GDP data and processes their corresponding geometries.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves GDP data for India's provinces and processes the 
+#   corresponding geometries.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -12,10 +12,9 @@ library(readxl)
 library(units)
 library(sf)
 
-# ------------------------------------------------- #
 # Obtain GDP data: 
 
-# only read the last two sheets which contain year 2012 to 2021
+# Only read the last two sheets, which contain data for the years 2012 to 2021.
 IND_regional_rgdp_pre <- map_dfr(.x = c("T_27(iii)", "T_27(iv)"), .f = function(sheet){
   
   df_out <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/IND/27T_15112023E301A02422494F73BFAFD6CDD84EEEAE.XLSX", skip = 5, n_max = 34, sheet = sheet) %>%
@@ -28,7 +27,7 @@ IND_regional_rgdp_pre <- map_dfr(.x = c("T_27(iii)", "T_27(iv)"), .f = function(
          rgdp_total = value)  %>% 
   mutate(year = as.numeric(substr(year,1,4)), 
          admin_unit = 2)  %>% 
-  filter(!admin_2_name %in% c("Jammu & Kashmir*", "Jammu & Kashmir-U.T.")) %>% # Jammu & Kashmir changes to Jammu & Kashmir-U.T. after year 2019, deal with them below
+  filter(!admin_2_name %in% c("Jammu & Kashmir*", "Jammu & Kashmir-U.T.")) %>% # After 2019, "Jammu & Kashmir" is renamed to "Jammu & Kashmir-U.T.". This change will be handled below.
   filter(year != 2022)  %>%
   mutate(rgdp_total = as.numeric(rgdp_total))
 
@@ -63,7 +62,7 @@ jk <- map_dfr(.x = c("T_27(iii)", "T_27(iv)"), .f = function(sheet){
 
 # combine them
 IND_regional_rgdp <- bind_rows(jk, IND_regional_rgdp_pre)  %>% 
-  filter(year != 2022) %>% # year 2022 has many missing data, and we do not need it now
+  filter(year != 2022) %>% # The data for 2022 is largely missing and is not required at this time.
   pivot_wider(names_from = admin_unit, values_from = c(matches("rgdp")),
               names_glue = "admin_{admin_unit}_{.value}")  %>% 
   mutate(admin_2_rgdp_total = as.numeric(admin_2_rgdp_total))  %>%               
@@ -105,5 +104,3 @@ training_df <- IND_regional_rgdp %>%
 
 st_write(IND_regional_sf, "step2_obtain_gdp_data/temp/ind_admin_2.gpkg", append = F)
 write.csv(training_df, "step2_obtain_gdp_data/temp/ind_training_data.csv", row.names = F)
-
-# eof ----

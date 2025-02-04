@@ -1,21 +1,17 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file is to obtain Russia's regional GDP data for year 2020 and 2021
-
-# Russia's subnational GDP data before 2020 can be obtained from OECD, but OECD suspend the participation of Russia and Belarus in its bodies.
-# Thus, we can only obtain Russia's GDP data through table "GROSS REGIONAL PRODUCT BY CONSTITUENT ENTITIES OF THE RUSSIAN FEDERATION" from 
-# "Russian Statistical Yearbook" on the "Federal State Statistics Service" Agency website "https://eng.rosstat.gov.ru/Publications/document/74811".
-# Future updates of Russia's subnational GDP data should refer to the "Russian Statistical Yearbook"
-
-# Note, the Gross Regional Product data are updated in a two year lag. So for example, if you want to find Gross Regional Product in 2020, one should
-# refer to "Russian Statistical Yearbook 2022" for relevant data.
-
-# Since the original table is in a word document and administrative units are slightly different than the OECD ones
-# it will be eaiser to do it manually
-
-# Following the description in the "inputs/gdp_data/regional/RUS/RUS.xlsx" file to get the data value for the
-# OECD's Russian administrative units
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves regional GDP data for Russia for the years 2020 and 2021.
+# Prior to 2020, Russia's subnational GDP data could be obtained from the OECD. However, 
+#   following the suspension of Russia and Belarus' participation in OECD bodies, the only 
+#   available source is the "GROSS REGIONAL PRODUCT BY CONSTITUENT ENTITIES OF THE RUSSIAN 
+#   FEDERATION" table from the Russian Statistical Yearbook, published by the Federal State 
+#   Statistics Service. The relevant data can be accessed at: https://eng.rosstat.gov.ru/Publications/document/74811.
+# Note that the Gross Regional Product (GRP) data is updated with a two-year lag. For instance, 
+#   data for 2020 can be found in the Russian Statistical Yearbook 2022.
+# Since the original data is in a Word document format and the administrative units differ
+#   slightly from the OECD's, manual extraction is recommended.
+# The data values for Russia's OECD administrative units should be derived as described in 
+#   the "inputs/gdp_data/regional/RUS/RUS.xlsx" file.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -27,9 +23,6 @@ library(units)
 library(sf)
 library(docxtractr)
 
-# ------------------------------------------------- #
-# Obtain GDP data:
-
 # obtain RUS 2020 and 2021 subnational GDP data
 RUS_2020_2021 <- read_excel(paste0("step2_obtain_gdp_data/inputs/gdp_data/regional/RUS/RUS.xlsx"), sheet = "data")  %>% 
     dplyr::select(c(id, name, region_gdp, year))  %>% 
@@ -40,8 +33,5 @@ RUS_2020_2021 <- read_excel(paste0("step2_obtain_gdp_data/inputs/gdp_data/region
     ungroup()
 
 write.csv(RUS_2020_2021, "step2_obtain_gdp_data/temp/RUS_2020_2021.csv", row.names = F)
-
-# ------------------------------------------------- #
-# Create shapefiles -----
 
 # Geometries are obtained together with OECD countries in file "3_oecd.R"
