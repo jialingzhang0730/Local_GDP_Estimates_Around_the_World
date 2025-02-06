@@ -7,7 +7,7 @@
 #   However, we recommend running the codes on macOS, as they have been tested on this platform. 
 #   Using other systems might lead to slightly different results due to system-specific variations.
 #
-#   Download the version 3.34.8 on the website ``https://download.qgis.org/downloads/". 
+#   Download the version 3.34.11 on the website ``https://download.qgis.org/downloads/". 
 #       For Mac users, go to ``macos/ltr/qgis\_ltr\_final-3\_34\_11\_20240913\_170535.dmg". 
 #
 # 2. Make sure you have R version 4.2.1 installed on your system
