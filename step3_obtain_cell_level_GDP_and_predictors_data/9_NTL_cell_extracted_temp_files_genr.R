@@ -24,11 +24,6 @@ library(future.apply)
 library(sf)
 library(dplyr)
 
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
-
 # ------------------------------------------------------------------------------------------------------------
 # obtain NTL temp files: aggregate original NTL data (several pieces) into one big map
 # the original NTL data are in linear lat/lon grid, so we do not need reproject

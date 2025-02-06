@@ -20,11 +20,6 @@ library(tidyverse)
 library(sp)
 library(tidyr)
 
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
-
 # ------------------------------------------------------------------------------------------------------------
 # obtain landcover temp files: aggregate original landcover data (several pieces) into one big map and reproject from sino to WGS84
 

@@ -16,9 +16,29 @@ Within each main task folder, there are multiple **sub-tasks**, systematically o
 This project is implemented using:
 - **R version 4.2.1 (2022-06-23) – "Funny-Looking Kid"**
 - **QGIS version 3.34.11**
-- This project requires a **high-performance computing environment** to support parallel processing. We utilize **10 cores**, which allows the **0.25-degree model** to complete training in approximately **3 to 4 days**. Using fewer cores will primarily **increase processing time** but **should not affect** the final results.
+- **Minimum memory requirement: 640GB** to fully replicate the results.
+- **Processing environment:** The analysis uses at most **10 cores** for parallel execution. Using fewer cores will primarily increase processing time but will **not affect** the final results. The full replication process took approximately **20 days** in our setup, but actual runtime depends on the available **cores and memory**.
 
-The workflow integrates **QGIS** into R through the `qgisprocess` package, allowing for seamless execution of geometry-related processes directly within R scripts. This eliminates the need for manual interaction with QGIS. Ensure that **QGIS is installed** on the same machine or server where the R scripts will be executed. If QGIS is not detected, the `qgisprocess` package will not function properly.
+The workflow integrates **QGIS** into R through the `qgisprocess` package, allowing for seamless execution of geometry-related processes directly within R scripts. This eliminates the need for manual interaction with QGIS. Ensure that **QGIS is installed** on the same machine or cluster where the R scripts will be executed. If QGIS is not detected, the `qgisprocess` package will not function properly.
+
+## Instructions
+1. **Download the replication package**  
+   Clone or download the entire replication package to your cluster or local machine.
+
+2. **Download and place the input data**  
+   Download the input data as described in our [Appendix](https://rossihansberg.economics.uchicago.edu/LGEAWApp.pdf) or [Replication Guide](https://bfidatastudio.org/wp-content/uploads/2025/01/Replication-Guide-2.pdf), and save it in the corresponding folder.  
+   - The GDP data in **"step2_obtain_gdp_data"** is already provided.  
+   - However, due to storage constraints, **high-resolution data and geometry files are not included** and must be downloaded separately.
+
+3. **Adjust shell scripts if necessary**  
+   - Many R scripts are originally executed by submitting jobs via **`qsub`** to the **HJB server**.  
+   - If using a different system or a system **without `qsub` support**, modify the shell scripts accordingly.  
+   - **Local machine users** can ignore the shell scripts but may need to adjust the **number of cores** used in R scripts by modifying the `mc.cores` argument inside the `mclapply` function to match their computers’ capabilities.
+
+4. **Set the working directory and run the main script**  
+   Modify the **working directory** in **"run_all_scripts.R"** to the appropriate path, then execute the script to automatically:  
+   - Install the necessary R packages.
+   - Run all the required R scripts in order.  
 
 ## Acknowledgement
 We thank Reigner Kane, Sreyas Mahadevan, and Jordan Rosenthal-Kay for excellent research assistance and contributions during the initial stages of this project.

@@ -19,11 +19,6 @@ library(gdata)
 library(units)
 library(tidyverse)
 
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
-
 # ------------------------------------------------------------------------------------------------------------
 # 1 degree
 

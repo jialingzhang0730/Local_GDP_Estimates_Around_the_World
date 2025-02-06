@@ -24,11 +24,6 @@ library(raster)
 args <- commandArgs(trailingOnly = TRUE)
 print(as.numeric(args[1]))
 
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
-
 # ----------------
 # Now extract NTL from urban and cropland 1deg 
 

@@ -25,11 +25,6 @@ library(future.apply)
 library(furrr)
 library(sf)
 
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
-
 # ------------------------------------------------------------------------------------------------------------
 # obtain NPP temp files: aggregate original NPP data (several pieces) into one big map and reproject from sino to WGS84
 
