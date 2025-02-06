@@ -32,7 +32,7 @@ The workflow integrates **QGIS** into R through the `qgisprocess` package, allow
 
 3. **Adjust shell scripts if necessary**  
    - Many R scripts are originally executed by submitting jobs via **`qsub`** to the **HJB server**.  
-   - If using a different system or a system **without `qsub` support**, modify the shell scripts accordingly.  
+   - If using a different system or a system **without `qsub` support**, modify the shell scripts and **"run_all_scripts.R"** accordingly.  
    - **Local machine users** can ignore the shell scripts but may need to adjust the **number of cores** used in R scripts by modifying the `mc.cores` argument inside the `mclapply` function to match their computers’ capabilities.
 
 4. **Set the working directory and run the main script**  
