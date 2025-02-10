@@ -1,9 +1,9 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Extract NPP values for each cell size
+# --------------------------------- Task Summary --------------------------------- #
+# Extract the NPP values for each cell.
 # NPP data come from "MOD17A3HGF", units = "kgC/m²/year"
-# Execute the .sh file on the server to utilize its larger memory capacity and increased number of cores, enabling more efficient parallel processing for the task.
-# ------------------------------------------------------------------------------------------------- #
+# Execute the .sh file on the server to utilize its larger memory capacity and increased 
+#   number of cores, enabling more efficient parallel processing for the task.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -24,11 +24,6 @@ library(future)
 library(future.apply)
 library(furrr)
 library(sf)
-
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
 
 # ------------------------------------------------------------------------------------------------------------
 # obtain NPP temp files: aggregate original NPP data (several pieces) into one big map and reproject from sino to WGS84

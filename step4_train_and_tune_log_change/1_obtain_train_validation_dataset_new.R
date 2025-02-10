@@ -1,8 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to separate the dataset into training, validation, and testing for each degree level
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file separates the dataset into training, validation, and testing sets 
+#   for each degree level.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -34,7 +33,7 @@ library(readxl)
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_1deg.RData")
 
 # consider first the developed group
-USA <- predict_data_complete_1deg %>% filter(substr(iso,1,2) %in% c("US")) # because the file name for the "new_predict_data_complete_1deg.RData" is "predict_data_complete_1deg"
+USA <- predict_data_complete_1deg %>% filter(substr(iso,1,2) %in% c("US")) # because the file name in the "new_predict_data_complete_1deg.RData" is "predict_data_complete_1deg"
 
 developed_group <- c("AUT", "BEL", "BGR", "CHE", "CZE", "DEU",
                      "DNK", "ESP", "EST", "FIN", "FRA", "GBR", "GRC", "HRV",   
@@ -108,7 +107,6 @@ testing_df_year_developing <- predict_data_complete_1deg  %>%
 testing_df_iso_developing <- predict_data_complete_1deg  %>% 
   filter(iso %in% random_country_developing[2])
 
-# In our sample, the data are imbalanced, developing countries data are much less than developed countries data. So we need to give higher weights to developing countries.
 training_df <- bind_rows(training_df_developed, training_df_developing)
 validation_df_year <- bind_rows(validation_df_year_developed, validation_df_year_developing)
 validation_df_iso <- bind_rows(validation_df_iso_developed, validation_df_iso_developing)
@@ -126,8 +124,6 @@ write.csv(testing_df_iso, file = "step4_train_and_tune_log_change/outputs/new_da
 # 0.5 degree
 
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_0_5deg.RData")
-
-# consider first the developed group
 
 # Note: Year 2021 was included in the training dataset because, at the time of dataset creation, data for 2021 had not yet been made available. 
 # As a result, most tests were conducted with 2019 as the validation year and 2020 as the test year. To maintain consistency with these test 
@@ -182,7 +178,6 @@ testing_df_year_developing <- predict_data_complete_0_5deg  %>%
 testing_df_iso_developing <- predict_data_complete_0_5deg  %>% 
   filter(iso %in% random_country_developing[2])
 
-# In our sample, the data are imbalanced, developing countries data are much less than developed countries data. So we need to give higher weights to developing countries.
 training_df <- bind_rows(training_df_developed, training_df_developing) 
 validation_df_year <- bind_rows(validation_df_year_developed, validation_df_year_developing)
 validation_df_iso <- bind_rows(validation_df_iso_developed, validation_df_iso_developing)
@@ -199,8 +194,6 @@ write.csv(testing_df_iso, file = "step4_train_and_tune_log_change/outputs/new_da
 # 0.25 degree
 
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_0_25deg.RData")
-
-# consider first the developed group
 
 # Note: Year 2021 was included in the training dataset because, at the time of dataset creation, data for 2021 had not yet been made available. 
 # As a result, most tests were conducted with 2019 as the validation year and 2020 as the test year. To maintain consistency with these test 
@@ -255,7 +248,6 @@ testing_df_year_developing <- predict_data_complete_0_25deg  %>%
 testing_df_iso_developing <- predict_data_complete_0_25deg  %>% 
   filter(iso %in% random_country_developing[2])
 
-# In our sample, the data are imbalanced, developing countries data are much less than developed countries data. So we need to give higher weights to developing countries.
 training_df <- bind_rows(training_df_developed, training_df_developing) 
 validation_df_year <- bind_rows(validation_df_year_developed, validation_df_year_developing)
 validation_df_iso <- bind_rows(validation_df_iso_developed, validation_df_iso_developing)

@@ -1,7 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# This file is to obtain the locations of those places that emit lights due to gas flaring.
-#   The data are in the folder "inputs/gas_flare_data"
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves the locations of places that emit light due to gas flaring.
+# The data is stored in the folder "inputs/gas_flare_data".
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -35,10 +35,6 @@ library(raster)
 library(readxl)
 library(qgisprocess)
 
-# please change to your specific folder
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
-# ------------------------------------------------- # 
 # identify the locations of those gas flare spots
 #   Original data are in excel, but we need gpkg file
 spot <- read_excel("step3_obtain_cell_level_GDP_and_predictors_data/inputs/gas_flare_data/GGFR-Flaring-Dashboard-Data-March292023.xlsx")
@@ -66,7 +62,7 @@ world_poly <- read_sf("step2_obtain_gdp_data/outputs/world_poly.gpkg")
 
 ggplot() +
   geom_sf(data = world_poly, fill = "lightgrey", color = "white") +  # Country boundaries in light grey
-  geom_sf(data = spot %>% st_as_sf(), aes(fill = "red"), color = "NA") +  # Cells from df_check in red
+  geom_sf(data = spot %>% st_as_sf(), aes(fill = "red"), color = "NA") +
   theme_minimal() +
   labs(title = "Gas Flare Spots") +
   theme_void() +
@@ -78,6 +74,3 @@ ggplot() +
         legend.position = "none")
 
 ggsave("step3_obtain_cell_level_GDP_and_predictors_data/outputs/gas_flare_data/gas_flare_spot.png", width = 10, height = 6, bg = "white")
-
-
-

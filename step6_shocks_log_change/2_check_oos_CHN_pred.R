@@ -1,8 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to compare the predicted cell GDP with true cell GDP for China
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file compares the predicted cell GDP with the true cell GDP for China.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -35,9 +33,6 @@ library(patchwork)
 library(gridExtra)
 library(cowplot)
 library(grid)
-
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
 
 # read the true cell GDP
 load("step6_shocks_log_change/outputs/CHN_test/chn_1deg_cell_GCP.RData")
@@ -116,9 +111,7 @@ combined_data <- bind_rows(yr_group_lvl_pred2, yr_group_chan_pred2) %>%
     plot_group == "Year-over-year Log Change: Post-COVID 2021" ~ "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)"
   ))
 
-# Create the combined plot with facet_wrap, using nrow and ncol for layout
-# title = "True vs Predicted GDP in China's Seven Leading Provinces",
-# subtitle = "1-dgeree cells; Unit: billion const 2017 USD",
+# Create the combined plot 
        
 combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_GCP_1deg, grate_true), 
                                            y = ifelse(type == "Log Level:", log_pred_GCP_1deg, grate_pred))) +
@@ -192,7 +185,7 @@ ggsave("step6_shocks_log_change/outputs/CHN_test/wuhan_time_series.pdf",
        bg = "white", width = 10)
 
 # ----------------------------------------------------------------------------------------------------------------------------------
-# now I want to try the predictions from model trained using years up to 2019 and see whether the method can still maintain good performance
+# now tests the predictions from the model trained using data up to 2019 to assess whether the method can still maintain good performance.
 
 # read the true cell GDP
 load("step6_shocks_log_change/outputs/CHN_test/chn_1deg_cell_GCP.RData")
@@ -271,7 +264,7 @@ combined_data <- bind_rows(yr_group_lvl_pred2, yr_group_chan_pred2) %>%
     plot_group == "Year-over-year Log Change: Post-COVID 2021" ~ "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)"
   ))
 
-# Create the combined plot with facet_wrap, using nrow and ncol for layout
+# Create the combined plot
 combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_GCP_1deg, grate_true), 
                                            y = ifelse(type == "Log Level:", log_pred_GCP_1deg, grate_pred))) +
   geom_point(size = 1, alpha = 0.7, color = "blue") +

@@ -1,7 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Obtain cell's CO2 non org values
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Retrieve the CO2 non-organic values for each cell.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -23,11 +22,6 @@ library(future.apply)
 library(sf)
 library(dplyr)
 library(stringr)
-
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
 
 # ------------------------------------------------------------------------------------------------------------
 # 1 degree

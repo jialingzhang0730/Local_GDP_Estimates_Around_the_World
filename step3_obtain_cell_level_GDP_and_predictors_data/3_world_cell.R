@@ -1,7 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Obtain the geometry and GDP of administrative regions used for GDP share and predictor share calculations
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Retrieve the geometry and GDP data for the administrative regions used in GDP 
+#      share and predictor share calculations.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -22,10 +22,6 @@ library(parallel)
 library(gdata)
 library(units)
 
-# please change to your specific folder
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
-# ------------------------------------------------- # 
 # load the boundaries we created 
 complete_poly <- read_sf("step2_obtain_gdp_data/outputs/complete_poly.gpkg")
 world_poly <- read_sf("step2_obtain_gdp_data/outputs/world_poly.gpkg")

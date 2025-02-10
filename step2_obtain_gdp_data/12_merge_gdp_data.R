@@ -1,15 +1,16 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
+# --------------------------------- Task Summary --------------------------------- #
 # This file is to rescale the regional data to match with IMF or WB or UN's national GDP data
 #
 # Note:
-# For USA, aggregated regional GDP does not equal to total country GDP, this is because:
-#         USA national GDP data contains territories like Puerto Rico, but non of the county GDP or state GDP
-#         contains this data. So sum of county GDP or state GDP definitely do not equal to USA national GDP.
-#          We still have some of those territories as separate "country"
-# For BEL, DNK, ESP, FRA, GBR, ITA, NLD, and NOR, according to OECD, there are some GDP not regionalized. 
-#         For those countries, we rescale the subnational GDP data so that they aggregated into national GDP
-# ------------------------------------------------------------------------------------------------- #
+# For the USA, the aggregated regional GDP does not match the total national GDP due 
+#   to the inclusion of territories like Puerto Rico in the national GDP data, which 
+#   are not included in county or state-level data. As a result, the sum of county or 
+#   state GDPs will not equal the USA national GDP. Some of these territories are still 
+#   treated as separate "countries".
+# For BEL, DNK, ESP, FRA, GBR, ITA, NLD, and NOR, according to the OECD, certain GDP 
+#   data is not regionalized. For these countries, the subnational GDP data is rescaled 
+#   to ensure the sum matches the national GDP.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -25,7 +26,6 @@ library(sf)
 library(units)
 library(readr)
 
-# ------------------------------------------------- #
 # read those regional data obtained before
 files <- list.files("step2_obtain_gdp_data/temp") %>% 
   .[grepl("training_data.csv$", .)]
@@ -39,7 +39,7 @@ training_data_complete_pre <- lapply(files, function(file){
   
 }) %>% reduce(bind_rows) %>% 
   dplyr::select(-c(parent_id))  %>% # we don't need this column
-  filter(year >= 2012, year <= 2021) # we only need year 2012-2021 for now, when you update, you want to extend the year 
+  filter(year >= 2012, year <= 2021) # we only need year 2012-2021 for now
 
 # For those BEL, DNK, ESP, FRA, GBR, ITA, NLD, and NOR countries, some of GDP data are not regionalised according to OECD. We 
 #   do not have a clear explanation for it. So let's make those regional data aggregated to match with national GDP data
@@ -59,9 +59,9 @@ scalar <- training_data_complete_pre  %>%
 # change regional GDP data to match with national GDP data
 training_data_complete <- training_data_complete_pre  %>% 
   left_join(scalar)  %>% 
-  mutate(unit_rgdp_total = ifelse(iso %in% iso_change, unit_rgdp_total*scalr, unit_rgdp_total)) %>% # note, we only change specific countries, not USA!!!!!
+  mutate(unit_rgdp_total = ifelse(iso %in% iso_change, unit_rgdp_total*scalr, unit_rgdp_total)) %>% 
   mutate(parent_rgdp_total = ifelse(iso %in% iso_change & parent_admin_unit == 2, 
-                                    parent_rgdp_total*scalr, parent_rgdp_total)) %>% # note here, TL2 level GDP data are also need to be adjusted
+                                    parent_rgdp_total*scalr, parent_rgdp_total)) %>% # note here, TL2-level GDP data are also need to be adjusted
   dplyr::select(-c(scalr))
 
 # read the national data
@@ -132,5 +132,3 @@ certain_developing_isos <- read.csv("step2_obtain_gdp_data/temp/DOSE_gdp_full.cs
   dplyr::select(c(iso, id, year, unit_rgdp_total, parent_rgdp_total, national_population))  
 
 write.csv(certain_developing_isos, "step2_obtain_gdp_data/outputs/DOSE_certain_developing_isos_total_rescaled.csv", row.names = F)
-
-# eof -----

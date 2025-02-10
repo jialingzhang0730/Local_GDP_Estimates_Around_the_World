@@ -1,8 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to show that population is NOT the only thing that contributes to the distribution of GDP
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file is to show that population is NOT the only thing that contributes to 
+#   the distribution of GDP
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()

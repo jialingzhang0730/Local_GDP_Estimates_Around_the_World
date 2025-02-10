@@ -11,7 +11,7 @@ do
 #PBS -j oe
 
 # Navigate to the working directory
-cd $PBS_O_WORKDIR
+cd \$PBS_O_WORKDIR
 
 # Load the specific R module (version 4.2.1)
 module load R/4.2.1

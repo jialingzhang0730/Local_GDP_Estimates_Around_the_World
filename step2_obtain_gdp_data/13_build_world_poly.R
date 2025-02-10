@@ -1,7 +1,6 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file is to obtain world polygons needed 
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves the world polygons required for the analysis.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -72,7 +71,7 @@ islands <- read_sf("step1_obtain_gis_data/outputs/gadm_country_level0_without_la
         dplyr::select(c(iso)) %>%
         st_set_crs(4326)
 
-# consider Alaska as a "separate" country because I did not put it as in the training sample
+# Consider Alaska as a separate entity, as it was not included in the training sample.
 alaska <- read_sf("step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
         filter(GID_0 == "USA", NAME_1 == "Alaska")  %>% 
         rename(iso = GID_0) %>%
@@ -110,8 +109,9 @@ st_write(world_poly, "step2_obtain_gdp_data/outputs/world_poly.gpkg", append = F
 
 # ------------------------------------------------- #
 ## build training sample polygons
-# select the following countries to put in the training sample to train the random forest: DOSE's certain developing isos (have some years missing)
-# for year 2021, there are some developed countries' data missing
+# Select the following countries for inclusion in the training sample to train the random forest model: 
+#   DOSE's specific developing countries (which have some missing data for certain years).
+#   For the year 2021, data for certain developed countries is missing.
 
 training_isos <- c("AUT", "BEL", "BGR", "CHE", "CZE", "DEU", "DNK", "ESP", "FIN", "FRA", "GBR", "GRC",
                   "HUN", "ITA", "JPN", "KOR", "LTU", "NLD", "NOR", "POL", "PRT", "ROU", "SVK", "HRV",
@@ -138,9 +138,7 @@ rgdp_total_rescaled <- read.csv("step2_obtain_gdp_data/outputs/rgdp_total_rescal
   filter(!iso %in% c("UVK", "WBG")) # we already have WBG as "PSE" and "UVK" as "XKX" data
 
 complete_poly <- rbind(training_poly_complete, world_poly %>% mutate(id = ifelse(iso == "Ala", "02", iso))) %>% 
-  mutate(id = ifelse(id == "Bangsamoro Autonomous Region\r\nin Muslim Mindanao_PHL", "Bangsamoro Autonomous Region\nin Muslim Mindanao_PHL", id))  %>% # i do not know why the id name is not read correctly here
+  mutate(id = ifelse(id == "Bangsamoro Autonomous Region\r\nin Muslim Mindanao_PHL", "Bangsamoro Autonomous Region\nin Muslim Mindanao_PHL", id))  %>% 
   filter(id %in% rgdp_total_rescaled$id)
 
 st_write(complete_poly, "step2_obtain_gdp_data/outputs/complete_poly.gpkg", append = F)
-
-# eof -----

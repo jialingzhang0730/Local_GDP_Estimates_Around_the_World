@@ -1,8 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file is to isolate the urban and cropland geometries within each cell. 
-# Then later we can extract nighttime light (NTL) emissions exclusively from the urban areas or from the cropland areas. 
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file isolates the urban and cropland geometries within each cell.
+# Subsequently, nighttime light (NTL) emissions can be extracted exclusively from 
+#   urban areas or cropland areas.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 rm(list = ls())
@@ -29,10 +29,6 @@ library(dplyr)
 library(raster)
 library(qgisprocess)
 
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
-# ------------------------------------------------------------------------------------------------------------
 # Convert the entire landcover raster to 11 polygons, each stand for a landcover type.
 
 data_folder <- "step3_obtain_cell_level_GDP_and_predictors_data/inputs/landcover_MCD12Q1V061"

@@ -1,8 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to predict GDP using the model trained using year 2012-2019. It will be used in "step6_shocks/2_COVID_shock.R"
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# # This file performs post-adjustment on the predicted 1-degree cell GDP values 
+#       from the model trained using data from 2012 to 2019.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()

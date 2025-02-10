@@ -1,9 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This continues with comparing models trained using all years and models trained using 2012-2019
-#   This file compares the growth of GDP, not GDP level anymore
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file continues the comparison between models trained using all years and 
+#   those trained using data from 2012 to 2019.
+# The focus of this comparison is on GDP growth, rather than GDP levels.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()

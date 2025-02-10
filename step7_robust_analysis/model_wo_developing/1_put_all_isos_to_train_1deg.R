@@ -1,9 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-#
-# This file is to train the random forest model for 1 degree cell without developing isos
-# If we remove developing isos, then there is no need to use weights
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file trains the 1-degree random forest model using data from 2012 to 2021.
+# Developing countries data are not included in the training sample.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -28,11 +26,6 @@ library(sf)
 library(tmaptools)
 library(plotly)
 library(htmlwidgets)
-
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
 
 # ------------------------------------------------- #
 # obtain full training data

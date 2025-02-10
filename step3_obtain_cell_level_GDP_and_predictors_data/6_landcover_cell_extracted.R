@@ -1,8 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Extract different types of landcover areas for each cell
-# Execute the .sh file on the server to utilize its larger memory capacity and increased number of cores, enabling more efficient parallel processing for the task.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Extract various types of landcover areas for each cell.
+# Execute the .sh file on the server to utilize its larger memory capacity and increased 
+#   number of cores, enabling more efficient parallel processing for the task.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -19,11 +19,6 @@ library(terra)
 library(tidyverse)
 library(sp)
 library(tidyr)
-
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
 
 # ------------------------------------------------------------------------------------------------------------
 # obtain landcover temp files: aggregate original landcover data (several pieces) into one big map and reproject from sino to WGS84

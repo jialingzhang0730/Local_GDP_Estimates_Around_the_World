@@ -1,8 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# Extract cell's NTL values. 
-# Execute the .sh file on the server to utilize its larger memory capacity and increased number of cores, enabling more efficient parallel processing for the task.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# Extract the NTL values for each cell. 
+# Execute the .sh file on the server to utilize its larger memory capacity and increased 
+#   number of cores, enabling more efficient parallel processing for the task.
+# -------------------------------------------------------------------------------- #
 
 library(gdalUtilities)
 library(parallel)
@@ -23,11 +23,6 @@ library(dplyr)
 # argument value
 args <- commandArgs(trailingOnly = TRUE)
 print(as.numeric(args[1]))
-
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
 
 # ------------------------------------------------------------------------------------------------------------
 # Now extract NTL values

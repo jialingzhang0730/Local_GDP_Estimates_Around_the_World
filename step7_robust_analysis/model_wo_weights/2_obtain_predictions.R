@@ -1,10 +1,9 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to obtain the predictions from the model trained in "1_put_all_isos_to_train_xdeg.R"
-#   prepare the predictions so to compare with our formal benchmark model in section "step4_train_and_tune_log_change" (also our model in the paper)
-# Predictions are obtained using exactly the same way as the formal benchmark model 
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file obtains the predictions from the model trained in "1_put_all_isos_to_train_xdeg.R".
+# The predictions are prepared for comparison with the formal benchmark model outlined 
+#   in "step4_train_and_tune_log_change" (as well as our model in the paper).
+# The predictions are obtained using the same method as the formal benchmark model.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -59,12 +58,12 @@ data_test_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_tes
 data_test_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_iso_1deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "1_put_all_isos_to_train_xdeg.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$fit$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
     rename(id = iso)  %>% 
-    mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg.R").
+    mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "1_put_all_isos_to_train_xdeg.R").
     dplyr::select(c(cell_id, id, year, pred_GCP_share_1deg))  %>% 
     mutate(cell_id = as.character(cell_id))  %>% 
     mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -120,14 +119,14 @@ land_area <- lc_full_1deg  %>%
         mutate(iso = ifelse(iso == "Ala", "USA", iso))
 
 # load GDP
-# Note: here I also want the area in square km based on a spherical approximation of the Earth
+# Note: here also want the area in square km based on a spherical approximation of the Earth
 pred_1deg_with_prov_bound <- predict_data_results_1deg_with_prov_boundary %>% 
                              as.data.frame() %>% 
                              dplyr::select(c(cell_id, id, iso, year, unit_gdp_af_sum_rescl, pred_GCP_share_1deg, pred_GCP_share_1deg_rescaled, pred_GCP_1deg))  %>% 
                              left_join(pop)  %>% 
                              left_join(land_area)  %>% 
                              mutate(pop_density_km2 = ifelse(land_area_km2 == 0, 0, pop/land_area_km2)) %>% 
-                             na.omit() # there is one cell for SAU that have missing data purely because of country border geometry differences from different sources, ignore it.
+                             na.omit() 
 
 # no extra adjustment
 pred_1deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust <- pred_1deg_with_prov_bound  %>% 
@@ -197,12 +196,12 @@ data_test_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_tes
 data_test_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_iso_0_5deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "1_put_all_isos_to_train_xdeg.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$fit$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
     rename(id = iso)  %>% 
-    mutate(pred_GCP_share_0_5deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg.R").
+    mutate(pred_GCP_share_0_5deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "1_put_all_isos_to_train_xdeg.R").
     dplyr::select(c(cell_id, subcell_id, id, year, pred_GCP_share_0_5deg))  %>% 
     mutate(cell_id = as.character(cell_id))  %>% 
     mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -258,15 +257,15 @@ land_area <- lc_full_0_5deg  %>%
         mutate(iso = ifelse(iso == "Ala", "USA", iso))
 
 # load GDP
-# Note: here I also want the area in square km based on a spherical approximation of the Earth
+# Note: here also want the area in square km based on a spherical approximation of the Earth
 
 pred_0_5deg_with_prov_bound <- predict_data_results_0_5deg_with_prov_boundary %>%
                             as.data.frame() %>% 
                             dplyr::select(c(cell_id, subcell_id, id, iso, year, unit_gdp_af_sum_rescl, pred_GCP_share_0_5deg, pred_GCP_share_0_5deg_rescaled, pred_GCP_0_5deg))  %>% 
                             left_join(pop)  %>% 
                             left_join(land_area)  %>% 
-                            mutate(pop_density_km2 = ifelse(land_area_km2 == 0, 0, pop/land_area_km2)) %>% # some small islands have population, but landcover data do not able to catch them, so ignore this problem
-                            na.omit() # there is one cell for SAU that have missing data purely because of country border geometry differences from different sources, ignore it.
+                            mutate(pop_density_km2 = ifelse(land_area_km2 == 0, 0, pop/land_area_km2)) %>% 
+                            na.omit() 
 
 # no extra adjustment
 pred_0_5deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust <- pred_0_5deg_with_prov_bound  %>% 
@@ -333,12 +332,12 @@ data_test_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_tes
 data_test_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_iso_0_25deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "1_put_all_isos_to_train_xdeg.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$fit$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
     rename(id = iso)  %>% 
-    mutate(pred_GCP_share_0_25deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg.R").
+    mutate(pred_GCP_share_0_25deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "1_put_all_isos_to_train_xdeg.R").
     dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, id, year, pred_GCP_share_0_25deg))  %>% 
     mutate(cell_id = as.character(cell_id))  %>% 
     mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -394,15 +393,15 @@ land_area <- lc_full_0_25deg  %>%
         mutate(iso = ifelse(iso == "Ala", "USA", iso))
 
 # load GDP
-# Note: here I also want the area in square km based on a spherical approximation of the Earth
+# Note: here also want the area in square km based on a spherical approximation of the Earth
 
 pred_0_25deg_with_prov_bound <- predict_data_results_0_25deg_with_prov_boundary %>%
                             as.data.frame() %>% 
                             dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, id, iso, year, unit_gdp_af_sum_rescl, pred_GCP_share_0_25deg, pred_GCP_share_0_25deg_rescaled, pred_GCP_0_25deg))  %>% 
                             left_join(pop)  %>% 
                             left_join(land_area)  %>% 
-                            mutate(pop_density_km2 = ifelse(land_area_km2 == 0, 0, pop/land_area_km2)) %>% # some small islands have population, but landcover data do not able to catch them, so ignore this problem
-                            na.omit() # there is one cell for SAU that have missing data purely because of country border geometry differences from different sources, ignore it.
+                            mutate(pop_density_km2 = ifelse(land_area_km2 == 0, 0, pop/land_area_km2)) %>% 
+                            na.omit() 
                             
 # no extra adjustment
 pred_0_25deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust <- pred_0_25deg_with_prov_bound  %>%
@@ -447,7 +446,7 @@ write.csv(GDPC_0_25deg_postadjust_pop_dens_no_extra_adjust, file = "step7_robust
 
 #load the model
 load("step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/rf_model9_good_grid_search_1deg_up_to_2019.RData")
-rf_model_good <- rf_model9_good_grid_search_1deg # because the name of the df in "rf_model9_good_grid_search_1deg_up_to_2019.RData" is "rf_model9_good_grid_search_1deg", so don't make it wrong
+rf_model_good <- rf_model9_good_grid_search_1deg # because the name of the df in "rf_model9_good_grid_search_1deg_up_to_2019.RData" is "rf_model9_good_grid_search_1deg"
 
 #load province/country GDP data
 province_GDP <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/rgdp_total_af_sum_rescl.csv") 
@@ -467,13 +466,13 @@ data_test_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_tes
 data_test_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_iso_1deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg_up_to_2019.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "1_put_all_isos_to_train_xdeg_up_to_2019.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$fit$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
     filter(year <= 2019)  %>% 
     rename(id = iso)  %>% 
-    mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg_up_to_2019.R").
+    mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "1_put_all_isos_to_train_xdeg_up_to_2019.R").
     dplyr::select(c(cell_id, id, year, pred_GCP_share_1deg))  %>% 
     mutate(cell_id = as.character(cell_id))  %>% 
     mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -530,7 +529,7 @@ land_area <- lc_full_1deg  %>%
         mutate(iso = ifelse(iso == "Ala", "USA", iso))
 
 # load GDP
-# Note: here I also want the area in square km based on a spherical approximation of the Earth
+# Note: here also want the area in square km based on a spherical approximation of the Earth
 
 pred_1deg_with_prov_bound <- predict_data_results_1deg_with_prov_boundary_model_up_to_2019 %>% 
                              dplyr::select(c(cell_id, id, iso, year, unit_gdp_af_sum_rescl, pred_GCP_share_1deg, pred_GCP_share_1deg_rescaled, pred_GCP_1deg, geom))  %>% 

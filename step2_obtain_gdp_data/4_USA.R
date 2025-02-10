@@ -1,8 +1,7 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-# This file retrieves USA GDP data for each county, state, and the entire nation, 
-#   and processes their corresponding geometries.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file retrieves GDP data for the USA at the county, state, and national 
+#   levels, and processes the associated geometries.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 Sys.getlocale()
@@ -16,7 +15,6 @@ library(sf)
 library(jsonlite)
 library(qgisprocess)
 
-# ------------------------------------------------- #
 # Obtain GDP data in current dollars: year 2001 - 2021
 
 county_gdp <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2021.csv")  %>% 
@@ -51,9 +49,9 @@ state_ctry_gdp <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/USA/C
                 values_to = "value")  %>% 
   rename(variable = LineCode, name = GeoName, state_fips = GeoFIPS) %>%
   mutate(variable = ifelse(variable == 1, "total"))  %>% 
-  filter(!str_detect(name, ","))  %>% # only want state level data: remove county level data here
+  filter(!str_detect(name, ","))  %>% # only need state level data: remove county level data here
   filter(!name %in% c("Mideast", "Great Lakes","New England",
-                      "Plains", "Southeast", "Southwest", "Rocky Mountain", "Far West")) %>% # only want state level data: remove country and region level data here
+                      "Plains", "Southeast", "Southwest", "Rocky Mountain", "Far West")) %>% # only need state level data: remove country and region level data here
   mutate(state_fips = str_sub(state_fips, 2,))  %>%
   pivot_wider(names_from = "variable", names_prefix = "admin_2_rgdp_") %>% 
   arrange(state_fips, year) %>% 
@@ -101,7 +99,7 @@ county_sf_pre <- county_gdp  %>%
 # 3. Menominee County, Wisconsin is combined with Shawano County for 1969–1988 as 55901. Separate estimates for Menominee and Shawano Counties begin in 1989.
 
 # Important: whenenver you update data, please check whether those modification changes
-#   they should be shown in the place where you download the GDP data (See Appendix for where to download the data)!!!!!!!!
+#   they should be shown in the place where you download the GDP data (See Appendix for where to download the data)
 
 which_county <- county_sf_pre  %>% 
   filter(st_is_empty(.))  %>% 
