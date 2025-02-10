@@ -33,9 +33,6 @@ library(RColorBrewer)
 library(gridExtra)
 library(grid)
 
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
 # plot
 load("step5_predict_and_post_adjustments_log_change/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_no_extra_adjust.RData")
 df <- GDPC_1deg_postadjust_pop_dens_no_extra_adjust %>% 

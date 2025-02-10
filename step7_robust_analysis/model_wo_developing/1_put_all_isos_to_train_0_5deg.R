@@ -28,11 +28,6 @@ library(tmaptools)
 library(plotly)
 library(htmlwidgets)
 
-# Dynamically set working directory based on PBS environment
-if (!is.null(Sys.getenv("PBS_O_WORKDIR")) && Sys.getenv("PBS_O_WORKDIR") != "") {
-  setwd(Sys.getenv("PBS_O_WORKDIR"))
-}
-
 # ------------------------------------------------- #
 # obtain full training data
 data_train <- read.csv("step4_train_and_tune_log_change/outputs/new_data_train_0_5deg.csv")
