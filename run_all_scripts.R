@@ -109,37 +109,37 @@ source("step3_obtain_cell_level_GDP_and_predictors_data/18_new_merge_all_predict
 source("step4_train_and_tune_log_change/1_obtain_train_validation_dataset_new.R", echo = TRUE)
 
 if (Sys.which("qsub") != "") {
-  system("step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
+  system("qsub step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
 } else {
   source("step4_train_and_tune_log_change/2_put_all_isos_to_train_1deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
+  system("qsub step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step4_train_and_tune_log_change/2_put_all_isos_to_train_1deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
+  system("qsub step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
 } else {
   source("step4_train_and_tune_log_change/2_put_all_isos_to_train_0_5deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_0_5deg_up_to_2019.sh", intern = FALSE)
+  system("qsub step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_0_5deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step4_train_and_tune_log_change/2_put_all_isos_to_train_0_5deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
+  system("qsub step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
 } else {
   source("step4_train_and_tune_log_change/2_put_all_isos_to_train_0_25deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_0_25deg_up_to_2019.sh", intern = FALSE)
+  system("qsub step4_train_and_tune_log_change/2_tuning_put_all_isos_to_train_0_25deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step4_train_and_tune_log_change/2_put_all_isos_to_train_0_25deg_up_to_2019.R", echo = TRUE)
 }
@@ -170,25 +170,25 @@ source("step6_shocks_log_change/3_check_training_isos_predictions_log_chan.R", e
 
 # step7.1: robustness check, tune the hyperparameters by minimizing Mean Square Error (MSE)
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_tune_MSE/1_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_tune_MSE/1_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_1deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_tune_MSE/1_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_tune_MSE/1_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_1deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_tune_MSE/1_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_tune_MSE/1_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_0_5deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_tune_MSE/1_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_tune_MSE/1_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_0_25deg.R", echo = TRUE)
 }
@@ -198,25 +198,25 @@ source("step7_robust_analysis/model_tune_MSE/3_compare_with_benchmark_model.R", 
 
 # step7.2: robustness check, train the model without developing countries
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_wo_developing/1_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_wo_developing/1_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_1deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_wo_developing/1_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_wo_developing/1_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_1deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_wo_developing/1_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_wo_developing/1_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_0_5deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_wo_developing/1_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_wo_developing/1_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_0_25deg.R", echo = TRUE)
 }
@@ -226,29 +226,28 @@ source("step7_robust_analysis/model_wo_developing/3_compare_with_benchmark_model
 
 # step7.3: robustness check, train the model without assigning weights to balance data from developed countries and developing countries
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_1deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_1deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_0_5deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
+  system("qsub step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_0_25deg.R", echo = TRUE)
 }
 
 source("step7_robust_analysis/model_wo_weights/2_obtain_predictions.R", echo = TRUE)
 source("step7_robust_analysis/model_wo_weights/3_compare_with_benchmark_model.R", echo = TRUE)
-
