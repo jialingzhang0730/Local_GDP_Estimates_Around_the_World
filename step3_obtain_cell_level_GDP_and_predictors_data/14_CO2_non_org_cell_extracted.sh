@@ -4,6 +4,6 @@
 #PBS -j oe
 
 cd $PBS_O_WORKDIR
-module load R/4.2.1
+module load R
 # execute program
 R CMD BATCH step3_obtain_cell_level_GDP_and_predictors_data/14_CO2_non_org_cell_extracted.R

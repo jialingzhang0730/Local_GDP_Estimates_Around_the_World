@@ -1,9 +1,13 @@
-# --------------------------------- Task Summary --------------------------------- #
-# This file compares the predictions with the formal benchmark model in 
-#   "step4_train_and_tune_log_change" (as well as our model in the paper).
-# -------------------------------------------------------------------------------- #
+# ------------------------------------------------------------------------------------------------- #
+# Task Summary:
+
+# This file is to compare this predictions with our formal benchmark model in section "step4_train_and_tune_log_change" (also our model in the paper)
+# ------------------------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+rm(list = ls())
+gc()
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -58,12 +62,14 @@ clean_names <- function(df) {
       TRUE ~ Variable
     ))
 }
-importance_1deg <- read.csv("step7_robust_analysis/model_wo_developing/outputs/importance_scores_1deg.csv")  %>%
-  clean_names()
-importance_0_5deg <- read.csv("step7_robust_analysis/model_wo_developing/outputs/importance_scores_0_5deg.csv") %>%
-  clean_names()
-importance_0_25deg <- read.csv("step7_robust_analysis/model_wo_developing/outputs/importance_scores_0_25deg.csv")  %>%
-  clean_names()
+load("step7_robust_analysis/model_wo_developing/outputs/var_imptc_score_1deg.RData")
+importance_1deg <- var_importance[[1]] %>% clean_names()
+
+load("step7_robust_analysis/model_wo_developing/outputs/var_imptc_score_0_5deg.RData")
+importance_0_5deg <- var_importance[[1]] %>% clean_names()
+
+load("step7_robust_analysis/model_wo_developing/outputs/var_imptc_score_0_25deg.RData")
+importance_0_25deg <- var_importance[[1]] %>% clean_names()
 
 merged_importance <- data.frame(
   Metric = variable_names
@@ -109,9 +115,9 @@ save_kable(latex_table, file = "step7_robust_analysis/model_wo_developing/output
 
 # ------------------------------------------------------------------------------------------------------------------------------------
 # some plots
-benchmark_1deg <- read.csv("step5_predict_and_post_adjustments_log_change/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_no_extra_adjust.csv")
-benchmark_0_5deg <- read.csv("step5_predict_and_post_adjustments_log_change/outputs/predict_data_results_postadjust_pop_density/GDPC_0_5deg_postadjust_pop_dens_no_extra_adjust.csv")
-benchmark_0_25deg <- read.csv("step5_predict_and_post_adjustments_log_change/outputs/predict_data_results_postadjust_pop_density/GDPC_0_25deg_postadjust_pop_dens_no_extra_adjust.csv")
+benchmark_1deg <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_no_extra_adjust.csv")
+benchmark_0_5deg <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_0_5deg_postadjust_pop_dens_no_extra_adjust.csv")
+benchmark_0_25deg <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_0_25deg_postadjust_pop_dens_no_extra_adjust.csv")
 
 test_1deg <- read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_1deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv")
 test_0_5deg <- read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_0_5deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv")
@@ -123,29 +129,29 @@ df <- benchmark_1deg %>%
   left_join(test_1deg %>% dplyr::select(c(cell_id, iso, year, predicted_GCP)) %>% rename(test_predicted_GCP = predicted_GCP)) %>% 
   filter(predicted_GCP != 0 & test_predicted_GCP != 0) %>% 
   mutate(r2_log_levl = 1 - sum((log(predicted_GCP) - log(test_predicted_GCP))^2) / 
-                 sum((log(predicted_GCP) - mean(log(predicted_GCP)))^2))
+           sum((log(predicted_GCP) - mean(log(predicted_GCP)))^2))
 
 p1 <- ggplot(df, aes(x=log(predicted_GCP), y = log(test_predicted_GCP))) +
-    geom_point(size = 1, alpha = 0.8, color = "blue") +
-    geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
-    theme_minimal()+ 
-    theme_bw()+
-    labs(subtitle = "1-degree Model Predictions \nAll Years Data Included", # Unit: const 2017 billion USD
-    x = "log(GDP) from Model Trained \nWith Developing Countries",
-    y = "log(GDP) from Model Trained \nWithout Developing Countries")+
-    annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_levl), accuracy = 0.01)), 
+  geom_point(size = 1, alpha = 0.8, color = "blue") +
+  geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
+  theme_minimal()+ 
+  theme_bw()+
+  labs(subtitle = "1-degree Model Predictions \nAll Years Data Included", # Unit: const 2021 billion USD
+       x = "log(GDP) from Model Trained \nWith Developing Countries",
+       y = "log(GDP) from Model Trained \nWithout Developing Countries")+
+  annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_levl), accuracy = 0.01)), 
            hjust = 1.2, vjust = -1.2, size = 7, color = "black") +
-    theme(
-      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 20, hjust = 0.5),
-      panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
-      strip.text = element_text(size = 20),
-      axis.title = element_text(size = 20),
-      axis.text = element_text(size = 11),
-      panel.grid.major = element_line(color = "grey80"),
-      panel.grid.minor = element_line(color = "grey90"),
-      plot.margin = margin(0, 26, 20, 0)
-    )     
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 20, hjust = 0.5),
+    panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
+    strip.text = element_text(size = 20),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 11),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_line(color = "grey90"),
+    plot.margin = margin(0, 26, 20, 0)
+  )     
 
 df <- benchmark_1deg %>% 
   dplyr::select(c(cell_id, iso, year, predicted_GCP)) %>% 
@@ -163,25 +169,25 @@ df <- benchmark_1deg %>%
   as.data.frame()
 
 p2 <- ggplot(df, aes(x=log_diff, y = log_diff_test)) +
-    geom_point(size = 1, alpha = 0.8, color = "blue") +
-    geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
-    theme_minimal()+ 
-    theme_bw()+
-    labs(subtitle = "1-degree Model Predictions \nAll Years Data Included", # Unit: const 2017 billion USD
-    x = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained With \nDeveloping Countries",
-    y = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained Without \nDeveloping Countries")+
-    annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_chan), accuracy = 0.01)), 
+  geom_point(size = 1, alpha = 0.8, color = "blue") +
+  geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
+  theme_minimal()+ 
+  theme_bw()+
+  labs(subtitle = "1-degree Model Predictions \nAll Years Data Included", # Unit: const 2021 billion USD
+       x = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained With \nDeveloping Countries",
+       y = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained Without \nDeveloping Countries")+
+  annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_chan), accuracy = 0.01)), 
            hjust = 1.2, vjust = -1.2, size = 7, color = "black")  +
-    theme(
-      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 20, hjust = 0.5),
-      panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
-      strip.text = element_text(size = 20),
-      axis.title = element_text(size = 20),
-      axis.text = element_text(size = 11),
-      panel.grid.major = element_line(color = "grey80"),
-      panel.grid.minor = element_line(color = "grey90"),
-      plot.margin = margin(20, 26, 0, 0))
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 20, hjust = 0.5),
+    panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
+    strip.text = element_text(size = 20),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 11),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_line(color = "grey90"),
+    plot.margin = margin(20, 26, 0, 0))
 
 # 0.5deg
 df <- benchmark_0_5deg %>% 
@@ -189,29 +195,29 @@ df <- benchmark_0_5deg %>%
   left_join(test_0_5deg %>% dplyr::select(c(cell_id, subcell_id, iso, year, predicted_GCP)) %>% rename(test_predicted_GCP = predicted_GCP)) %>% 
   filter(predicted_GCP != 0 & test_predicted_GCP != 0) %>% 
   mutate(r2_log_levl = 1 - sum((log(predicted_GCP) - log(test_predicted_GCP))^2) / 
-                 sum((log(predicted_GCP) - mean(log(predicted_GCP)))^2))
+           sum((log(predicted_GCP) - mean(log(predicted_GCP)))^2))
 
 p3 <- ggplot(df, aes(x=log(predicted_GCP), y = log(test_predicted_GCP))) +
-    geom_point(size = 1, alpha = 0.8, color = "blue") +
-    geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
-    theme_minimal()+ 
-    theme_bw()+
-    labs(subtitle = "0.5-degree Model Predictions \nAll Years Data Included", # Unit: const 2017 billion USD 
-    x = "log(GDP) from Model Trained \nWith Developing Countries",
-    y = "log(GDP) from Model Trained \nWithout Developing Countries")+
-    annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_levl), accuracy = 0.01)), 
+  geom_point(size = 1, alpha = 0.8, color = "blue") +
+  geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
+  theme_minimal()+ 
+  theme_bw()+
+  labs(subtitle = "0.5-degree Model Predictions \nAll Years Data Included", # Unit: const 2021 billion USD 
+       x = "log(GDP) from Model Trained \nWith Developing Countries",
+       y = "log(GDP) from Model Trained \nWithout Developing Countries")+
+  annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_levl), accuracy = 0.01)), 
            hjust = 1.2, vjust = -1.2, size = 7, color = "black") +
-    theme(
-      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 20, hjust = 0.5),
-      panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
-      strip.text = element_text(size = 20),
-      axis.title = element_text(size = 20),
-      axis.text = element_text(size = 11),
-      panel.grid.major = element_line(color = "grey80"),
-      panel.grid.minor = element_line(color = "grey90"),
-      plot.margin = margin(0, 13, 20, 13)
-    )   
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 20, hjust = 0.5),
+    panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
+    strip.text = element_text(size = 20),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 11),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_line(color = "grey90"),
+    plot.margin = margin(0, 13, 20, 13)
+  )   
 
 df <- benchmark_0_5deg %>% 
   dplyr::select(c(cell_id, subcell_id, iso, year, predicted_GCP)) %>% 
@@ -229,26 +235,26 @@ df <- benchmark_0_5deg %>%
   as.data.frame()
 
 p4 <- ggplot(df, aes(x=log_diff, y = log_diff_test)) +
-    geom_point(size = 1, alpha = 0.8, color = "blue") +
-    geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
-    theme_minimal()+ 
-    theme_bw()+
-    labs(subtitle = "0.5-degree Model Predictions \nAll Years Data Included", # Unit: const 2017 billion USD
-    x = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained With \nDeveloping Countries",
-    y = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained Without \nDeveloping Countries")+
-    annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_chan), accuracy = 0.01)), 
+  geom_point(size = 1, alpha = 0.8, color = "blue") +
+  geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
+  theme_minimal()+ 
+  theme_bw()+
+  labs(subtitle = "0.5-degree Model Predictions \nAll Years Data Included", # Unit: const 2021 billion USD
+       x = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained With \nDeveloping Countries",
+       y = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained Without \nDeveloping Countries")+
+  annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_chan), accuracy = 0.01)), 
            hjust = 1.2, vjust = -1.2, size = 7, color = "black") +
-    theme(
-      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 20, hjust = 0.5),
-      panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
-      strip.text = element_text(size = 20),
-      axis.title = element_text(size = 20),
-      axis.text = element_text(size = 11),
-      panel.grid.major = element_line(color = "grey80"),
-      panel.grid.minor = element_line(color = "grey90"),
-      plot.margin = margin(20, 13, 0, 13)
-    )   
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 20, hjust = 0.5),
+    panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
+    strip.text = element_text(size = 20),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 11),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_line(color = "grey90"),
+    plot.margin = margin(20, 13, 0, 13)
+  )   
 
 # 0.25deg
 df <- benchmark_0_25deg %>% 
@@ -256,29 +262,29 @@ df <- benchmark_0_25deg %>%
   left_join(test_0_25deg %>% dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, predicted_GCP)) %>% rename(test_predicted_GCP = predicted_GCP)) %>% 
   filter(predicted_GCP != 0 & test_predicted_GCP != 0) %>% 
   mutate(r2_log_levl = 1 - sum((log(predicted_GCP) - log(test_predicted_GCP))^2) / 
-                 sum((log(predicted_GCP) - mean(log(predicted_GCP)))^2))
+           sum((log(predicted_GCP) - mean(log(predicted_GCP)))^2))
 
 p5 <- ggplot(df, aes(x=log(predicted_GCP), y = log(test_predicted_GCP))) +
-    geom_point(size = 1, alpha = 0.8, color = "blue") +
-    geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
-    theme_minimal()+ 
-    theme_bw()+
-    labs(subtitle = "0.25-degree Model Predictions \nAll Years Data Included", # Unit: const 2017 billion USD
-    x = "log(GDP) from Model Trained \nWith Developing Countries",
-    y = "log(GDP) from Model Trained \nWithout Developing Countries")+
-    annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_levl), accuracy = 0.01)), 
+  geom_point(size = 1, alpha = 0.8, color = "blue") +
+  geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
+  theme_minimal()+ 
+  theme_bw()+
+  labs(subtitle = "0.25-degree Model Predictions \nAll Years Data Included", # Unit: const 2021 billion USD
+       x = "log(GDP) from Model Trained \nWith Developing Countries",
+       y = "log(GDP) from Model Trained \nWithout Developing Countries")+
+  annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_levl), accuracy = 0.01)), 
            hjust = 1.2, vjust = -1.2, size = 7, color = "black") +
-    theme(
-      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 20, hjust = 0.5),
-      panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
-      strip.text = element_text(size = 20),
-      axis.title = element_text(size = 20),
-      axis.text = element_text(size = 11),
-      panel.grid.major = element_line(color = "grey80"),
-      panel.grid.minor = element_line(color = "grey90"),
-      plot.margin = margin(0, 0, 20, 26)
-    )  
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 20, hjust = 0.5),
+    panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
+    strip.text = element_text(size = 20),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 11),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_line(color = "grey90"),
+    plot.margin = margin(0, 0, 20, 26)
+  )  
 
 df <- benchmark_0_25deg %>% 
   dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, predicted_GCP)) %>% 
@@ -296,26 +302,26 @@ df <- benchmark_0_25deg %>%
   as.data.frame()
 
 p6 <- ggplot(df, aes(x=log_diff, y = log_diff_test)) +
-    geom_point(size = 1, alpha = 0.8, color = "blue") +
-    geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
-    theme_minimal()+ 
-    theme_bw()+
-    labs(subtitle = "0.25-degree Model Predictions \nAll Years Data Included", # Unit: const 2017 billion USD
-    x = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained With \nDeveloping Countries",
-    y = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained Without \nDeveloping Countries")+
-    annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_chan), accuracy = 0.01)), 
+  geom_point(size = 1, alpha = 0.8, color = "blue") +
+  geom_abline(intercept = 0, slope = 1, size = 0.5, color = "red", linetype = "dashed")+
+  theme_minimal()+ 
+  theme_bw()+
+  labs(subtitle = "0.25-degree Model Predictions \nAll Years Data Included", # Unit: const 2021 billion USD
+       x = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained With \nDeveloping Countries",
+       y = "log(GDP in t) - log(GDP in t-1)\nfrom Model Trained Without \nDeveloping Countries")+
+  annotate("text", x = Inf, y = -Inf, label = paste0("R² = ", scales::percent(unique(df$r2_log_chan), accuracy = 0.01)), 
            hjust = 1.2, vjust = -1.2, size = 7, color = "black") +
-    theme(
-      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 20, hjust = 0.5),
-      panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
-      strip.text = element_text(size = 20),
-      axis.title = element_text(size = 20),
-      axis.text = element_text(size = 11),
-      panel.grid.major = element_line(color = "grey80"),
-      panel.grid.minor = element_line(color = "grey90"),
-      plot.margin = margin(20, 0, 0, 26)
-    ) 
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 20, hjust = 0.5),
+    panel.border = element_rect(color = "black", fill = NA, size = 1.5), 
+    strip.text = element_text(size = 20),
+    axis.title = element_text(size = 20),
+    axis.text = element_text(size = 11),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_line(color = "grey90"),
+    plot.margin = margin(20, 0, 0, 26)
+  ) 
 
 combined_plot <- plot_grid(p1, p3, p5, p2, p4, p6, ncol = 3)
 
@@ -328,11 +334,11 @@ ggsave("step7_robust_analysis/model_wo_developing/outputs/compare_w_wo_devlping_
 developing_group <- c("CHL","COL","IDN","KGZ","PER","PHL","ALB","BIH","BLR",
                       "MOZ","SRB","UZB","VNM","KEN","LKA","THA","ECU")
 
-data_train <- read.csv("step4_train_and_tune_log_change/outputs/new_data_train_1deg.csv") 
-data_valid_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_valid_year_1deg.csv")  
-data_valid_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_valid_iso_1deg.csv")  
-data_test_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_year_1deg.csv") 
-data_test_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_iso_1deg.csv") 
+data_train <- read.csv("step4_benchmark_model/outputs/new_data_train_1deg.csv") 
+data_valid_year <- read.csv("step4_benchmark_model/outputs/new_data_valid_year_1deg.csv")  
+data_valid_iso <- read.csv("step4_benchmark_model/outputs/new_data_valid_iso_1deg.csv")  
+data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_1deg.csv") 
+data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_1deg.csv") 
 
 developing_group <- c("CHL","COL","IDN","KGZ","PER","PHL","ALB","BIH","BLR",
                       "MOZ","SRB","UZB","VNM","KEN","LKA","THA","ECU")
@@ -343,22 +349,22 @@ truth <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, 
 
 chec_level <- truth %>%
   left_join(read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_1deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv") %>% 
-            filter(iso %in% developing_group) %>%
-            dplyr::select(c(cell_id, iso, year, predicted_GCP))) %>% 
+              filter(iso %in% developing_group) %>%
+              dplyr::select(c(cell_id, iso, year, predicted_GCP))) %>% 
   filter(GCP_1deg != 0 & predicted_GCP != 0) %>% 
   group_by(iso) %>% 
   mutate(r2_level = 1 - sum((log(GCP_1deg) - log(predicted_GCP))^2) / sum((log(GCP_1deg) - mean(log(GCP_1deg)))^2),
          GDP_loss = sum(abs(GCP_1deg - predicted_GCP)) / (2*sum(GCP_1deg))) %>% 
   ungroup() %>% 
   distinct(iso, r2_level, GDP_loss)
-  
+
 chec_change <- truth %>%
   left_join(read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_1deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv") %>% 
-            filter(iso %in% developing_group) %>%
-            dplyr::select(c(cell_id, iso, year, predicted_GCP))) %>% 
+              filter(iso %in% developing_group) %>%
+              dplyr::select(c(cell_id, iso, year, predicted_GCP))) %>% 
   arrange(iso, cell_id, year) %>% 
   mutate(prev_year_pred = ifelse(year - 1 %in% year, predicted_GCP[match(year - 1, year)], NA),
-        prev_year_true = ifelse(year - 1 %in% year, GCP_1deg[match(year - 1, year)], NA)) %>%
+         prev_year_true = ifelse(year - 1 %in% year, GCP_1deg[match(year - 1, year)], NA)) %>%
   ungroup() %>% 
   filter(!is.na(prev_year_pred) & !is.na(prev_year_true)) %>% 
   filter(GCP_1deg != 0 & predicted_GCP != 0 & prev_year_pred != 0 & prev_year_true != 0) %>% 
@@ -394,11 +400,11 @@ save_kable(table_latex, file = "step7_robust_analysis/model_wo_developing/output
 developing_group <- c("CHL","COL","IDN","KGZ","PER","PHL","ALB","BIH","BLR",
                       "MOZ","SRB","UZB","VNM","KEN","LKA","THA","ECU")
 
-data_train <- read.csv("step4_train_and_tune_log_change/outputs/new_data_train_0_5deg.csv") 
-data_valid_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_valid_year_0_5deg.csv")  
-data_valid_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_valid_iso_0_5deg.csv")  
-data_test_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_year_0_5deg.csv") 
-data_test_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_iso_0_5deg.csv") 
+data_train <- read.csv("step4_benchmark_model/outputs/new_data_train_0_5deg.csv") 
+data_valid_year <- read.csv("step4_benchmark_model/outputs/new_data_valid_year_0_5deg.csv")  
+data_valid_iso <- read.csv("step4_benchmark_model/outputs/new_data_valid_iso_0_5deg.csv")  
+data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_0_5deg.csv") 
+data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_0_5deg.csv") 
 
 developing_group <- c("CHL","COL","IDN","KGZ","PER","PHL","ALB","BIH","BLR",
                       "MOZ","SRB","UZB","VNM","KEN","LKA","THA","ECU")
@@ -409,22 +415,22 @@ truth <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, 
 
 chec_level <- truth %>%
   left_join(read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_0_5deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv") %>% 
-            filter(iso %in% developing_group) %>%
-            dplyr::select(c(cell_id, subcell_id, iso, year, predicted_GCP))) %>% 
+              filter(iso %in% developing_group) %>%
+              dplyr::select(c(cell_id, subcell_id, iso, year, predicted_GCP))) %>% 
   filter(GCP_0_5deg != 0 & predicted_GCP != 0) %>% 
   group_by(iso) %>% 
   mutate(r2_level = 1 - sum((log(GCP_0_5deg) - log(predicted_GCP))^2) / sum((log(GCP_0_5deg) - mean(log(GCP_0_5deg)))^2),
          GDP_loss = sum(abs(GCP_0_5deg - predicted_GCP)) / (2*sum(GCP_0_5deg))) %>% 
   ungroup() %>% 
   distinct(iso, r2_level, GDP_loss)
-  
+
 chec_change <- truth %>%
   left_join(read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_0_5deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv") %>% 
-            filter(iso %in% developing_group) %>%
-            dplyr::select(c(cell_id, subcell_id, iso, year, predicted_GCP))) %>% 
+              filter(iso %in% developing_group) %>%
+              dplyr::select(c(cell_id, subcell_id, iso, year, predicted_GCP))) %>% 
   arrange(iso, cell_id, subcell_id, year) %>% 
   mutate(prev_year_pred = ifelse(year - 1 %in% year, predicted_GCP[match(year - 1, year)], NA),
-        prev_year_true = ifelse(year - 1 %in% year, GCP_0_5deg[match(year - 1, year)], NA)) %>%
+         prev_year_true = ifelse(year - 1 %in% year, GCP_0_5deg[match(year - 1, year)], NA)) %>%
   ungroup() %>% 
   filter(!is.na(prev_year_pred) & !is.na(prev_year_true)) %>% 
   filter(GCP_0_5deg != 0 & predicted_GCP != 0 & prev_year_pred != 0 & prev_year_true != 0) %>% 
@@ -459,11 +465,11 @@ save_kable(table_latex, file = "step7_robust_analysis/model_wo_developing/output
 developing_group <- c("CHL","COL","IDN","KGZ","PER","PHL","ALB","BIH","BLR",
                       "MOZ","SRB","UZB","VNM","KEN","LKA","THA","ECU")
 
-data_train <- read.csv("step4_train_and_tune_log_change/outputs/new_data_train_0_25deg.csv") 
-data_valid_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_valid_year_0_25deg.csv")  
-data_valid_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_valid_iso_0_25deg.csv")  
-data_test_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_year_0_25deg.csv") 
-data_test_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_iso_0_25deg.csv") 
+data_train <- read.csv("step4_benchmark_model/outputs/new_data_train_0_25deg.csv") 
+data_valid_year <- read.csv("step4_benchmark_model/outputs/new_data_valid_year_0_25deg.csv")  
+data_valid_iso <- read.csv("step4_benchmark_model/outputs/new_data_valid_iso_0_25deg.csv")  
+data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_0_25deg.csv") 
+data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_0_25deg.csv") 
 
 developing_group <- c("CHL","COL","IDN","KGZ","PER","PHL","ALB","BIH","BLR",
                       "MOZ","SRB","UZB","VNM","KEN","LKA","THA","ECU")
@@ -474,22 +480,22 @@ truth <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, 
 
 chec_level <- truth %>%
   left_join(read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_0_25deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv") %>% 
-            filter(iso %in% developing_group) %>%
-            dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, predicted_GCP))) %>% 
+              filter(iso %in% developing_group) %>%
+              dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, predicted_GCP))) %>% 
   filter(GCP_0_25deg != 0 & predicted_GCP != 0) %>% 
   group_by(iso) %>% 
   mutate(r2_level = 1 - sum((log(GCP_0_25deg) - log(predicted_GCP))^2) / sum((log(GCP_0_25deg) - mean(log(GCP_0_25deg)))^2),
          GDP_loss = sum(abs(GCP_0_25deg - predicted_GCP)) / (2*sum(GCP_0_25deg))) %>% 
   ungroup() %>% 
   distinct(iso, r2_level, GDP_loss)
-  
+
 chec_change <- truth %>%
   left_join(read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_0_25deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv") %>% 
-            filter(iso %in% developing_group) %>%
-            dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, predicted_GCP))) %>% 
+              filter(iso %in% developing_group) %>%
+              dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, predicted_GCP))) %>% 
   arrange(iso, cell_id, subcell_id, subcell_id_0_25, year) %>% 
   mutate(prev_year_pred = ifelse(year - 1 %in% year, predicted_GCP[match(year - 1, year)], NA),
-        prev_year_true = ifelse(year - 1 %in% year, GCP_0_25deg[match(year - 1, year)], NA)) %>%
+         prev_year_true = ifelse(year - 1 %in% year, GCP_0_25deg[match(year - 1, year)], NA)) %>%
   ungroup() %>% 
   filter(!is.na(prev_year_pred) & !is.na(prev_year_true)) %>% 
   filter(GCP_0_25deg != 0 & predicted_GCP != 0 & prev_year_pred != 0 & prev_year_true != 0) %>% 
@@ -520,47 +526,47 @@ table_latex <- results %>%
 save_kable(table_latex, file = "step7_robust_analysis/model_wo_developing/outputs/developing_perfomance_0_25deg.tex")
 
 
-# Conduct the same tests for comparison
+# I want the same tests for comparison
 
 # first test: china test
 # read the true cell GDP
-load("step6_shocks_log_change/outputs/CHN_test/chn_1deg_cell_GCP.RData")
+load("step6_test_model_under_shocks/outputs/CHN_test/chn_1deg_cell_GCP.RData")
 china_truth <- chn_1deg_cell_GCP  %>% 
-    dplyr::select(c(cell_id, prov_id, iso, year, GCP_1deg))  %>% 
-    group_by(cell_id, prov_id, year)  %>% 
-    mutate(GCP_1deg = sum(GCP_1deg))  %>% 
-    ungroup()  %>% 
-    distinct(cell_id, prov_id, year, GCP_1deg)
+  dplyr::select(c(cell_id, prov_id, iso, year, GCP_1deg))  %>% 
+  group_by(cell_id, prov_id, year)  %>% 
+  mutate(GCP_1deg = sum(GCP_1deg))  %>% 
+  ungroup()  %>% 
+  distinct(cell_id, prov_id, year, GCP_1deg)
 
 # read the predicted GDP
 load("step7_robust_analysis/model_wo_developing/outputs/pred_1deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust.RData")
 china_predicted <- pred_1deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust  %>% 
-    filter(iso == "CHN")  %>% 
-    as.data.frame() %>% 
-    dplyr::select(c(cell_id, id, iso, year, pred_GCP_1deg)) %>% 
-    mutate(prov_id = case_when(
-      id == "Hubei_CHN" ~ "42",
-      id == "Sichuan_CHN" ~ "51",
-      id == "Guangdong_CHN" ~ "44",
-      id == "Zhejiang_CHN" ~ "33",
-      id == "Jiangsu_CHN" ~ "32",
-      id == "Shandong_CHN" ~ "37",
-      id == "Henan_CHN" ~ "41"
-    ))
+  filter(iso == "CHN")  %>% 
+  as.data.frame() %>% 
+  dplyr::select(c(cell_id, id, iso, year, pred_GCP_1deg)) %>% 
+  mutate(prov_id = case_when(
+    id == "Hubei_CHN" ~ "42",
+    id == "Sichuan_CHN" ~ "51",
+    id == "Guangdong_CHN" ~ "44",
+    id == "Zhejiang_CHN" ~ "33",
+    id == "Jiangsu_CHN" ~ "32",
+    id == "Shandong_CHN" ~ "37",
+    id == "Henan_CHN" ~ "41"
+  ))
 
 # combine
 china_df <- china_truth  %>% 
-    left_join(china_predicted)  %>% 
-    na.omit()  # some of cells are missing because of different sources of geometry
+  left_join(china_predicted)  %>% 
+  na.omit()  # some of cells are missing because of different sources of geometry
 
 yr_group_lvl_pred <- china_df %>% 
-    mutate(yr_levl_group = ifelse(year %in% c(2012:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021"))) %>% 
-    mutate(log_GCP_1deg = log(GCP_1deg), 
-           log_pred_GCP_1deg = log(pred_GCP_1deg)) %>% 
-    filter(is.finite(log_GCP_1deg) & is.finite(log_pred_GCP_1deg)) %>% 
-    group_by(yr_levl_group) %>% 
-    mutate(R2_levl = 1 - sum((log_GCP_1deg - log_pred_GCP_1deg)^2) / sum((log_GCP_1deg - mean(log_GCP_1deg))^2))  %>% 
-    ungroup()
+  mutate(yr_levl_group = ifelse(year %in% c(2012:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 
+  mutate(log_GCP_1deg = log(GCP_1deg), 
+         log_pred_GCP_1deg = log(pred_GCP_1deg)) %>% 
+  filter(is.finite(log_GCP_1deg) & is.finite(log_pred_GCP_1deg)) %>% 
+  group_by(yr_levl_group) %>% 
+  mutate(R2_levl = 1 - sum((log_GCP_1deg - log_pred_GCP_1deg)^2) / sum((log_GCP_1deg - mean(log_GCP_1deg))^2))  %>% 
+  ungroup()
 
 change <- china_df %>%
   arrange(iso, prov_id, cell_id, year) %>% 
@@ -574,10 +580,10 @@ change <- china_df %>%
   filter(is.finite(grate_pred) & is.finite(grate_true))
 
 yr_group_chan_pred <- change %>% 
-    mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021"))) %>% 
-    group_by(yr_chan_group) %>% 
-    mutate(R2_chan = 1 - sum((grate_true - grate_pred)^2) / sum((grate_true - mean(grate_true))^2)) %>%
-    ungroup() 
+  mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 
+  group_by(yr_chan_group) %>% 
+  mutate(R2_chan = 1 - sum((grate_true - grate_pred)^2) / sum((grate_true - mean(grate_true))^2)) %>%
+  ungroup() 
 
 yr_group_lvl_pred2 <- yr_group_lvl_pred %>%
   mutate(type = "Log Level:")
@@ -588,19 +594,21 @@ yr_group_chan_pred2 <- yr_group_chan_pred %>%
 combined_data <- bind_rows(yr_group_lvl_pred2, yr_group_chan_pred2) %>%
   mutate(plot_group = paste(type, ifelse(type == "Log Level:", yr_levl_group, yr_chan_group))) %>% 
   mutate(annotation = ifelse(type == "Log Level:", 
-                        sprintf("R² = %.2f%%", R2_levl * 100), 
-                        sprintf("R² = %.2f%%", R2_chan * 100))) %>% 
+                             sprintf("R² = %.2f%%", R2_levl * 100), 
+                             sprintf("R² = %.2f%%", R2_chan * 100))) %>% 
   mutate(plot_group = case_when(
     plot_group == "Log Level: Pre-COVID 2012-2019" ~ "Pre-COVID 2012 to 2019: log(GDP)",
     plot_group == "Log Level: COVID 2020" ~ "COVID 2020: log(GDP)",
-    plot_group == "Log Level: Post-COVID 2021" ~ "Post-COVID 2021: log(GDP)",
+    plot_group == "Log Level: Post-COVID 2021-2022" ~ "Post-COVID 2021 to 2022: log(GDP)",
     plot_group == "Year-over-year Log Change: Pre-COVID 2012-2019" ~ "Pre-COVID 2012 to 2019: \nlog(GDP in t) - log(GDP in t-1)",
     plot_group == "Year-over-year Log Change: COVID 2020" ~ "COVID 2020: \nlog(GDP in 2020) - log(GDP in 2019)",
-    plot_group == "Year-over-year Log Change: Post-COVID 2021" ~ "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)"
+    plot_group == "Year-over-year Log Change: Post-COVID 2021-2022" ~ "Post-COVID 2021 to 2022: \nlog(GDP in t) - log(GDP in t-1)"
   ))
 
-# Create the combined plot
-       
+# Create the combined plot with facet_wrap, using nrow and ncol for layout
+# title = "True vs Predicted GDP in China's Seven Leading Provinces",
+# subtitle = "1-dgeree cells; Unit: billion const 2021 USD",
+
 combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_GCP_1deg, grate_true), 
                                            y = ifelse(type == "Log Level:", log_pred_GCP_1deg, grate_pred))) +
   geom_point(size = 1, alpha = 0.7, color = "blue") +
@@ -610,10 +618,10 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
        y = "Predicted Values: 1deg Cells") +
   facet_wrap(~ factor(plot_group, levels = c("Pre-COVID 2012 to 2019: log(GDP)", 
                                              "COVID 2020: log(GDP)", 
-                                             "Post-COVID 2021: log(GDP)",
+                                             "Post-COVID 2021 to 2022: log(GDP)",
                                              "Pre-COVID 2012 to 2019: \nlog(GDP in t) - log(GDP in t-1)", 
                                              "COVID 2020: \nlog(GDP in 2020) - log(GDP in 2019)", 
-                                             "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)")),
+                                             "Post-COVID 2021 to 2022: \nlog(GDP in t) - log(GDP in t-1)")),
              nrow = 2, ncol = 3, scales = "free") +
   theme_minimal(base_size = 14) +
   theme(
@@ -632,43 +640,43 @@ ggsave("step7_robust_analysis/model_wo_developing/outputs/log_level_change_r2.pn
 
 # Second test: China test but use model trained on year 2012-2019
 # read the true cell GDP
-load("step6_shocks_log_change/outputs/CHN_test/chn_1deg_cell_GCP.RData")
+load("step6_test_model_under_shocks/outputs/CHN_test/chn_1deg_cell_GCP.RData")
 china_truth <- chn_1deg_cell_GCP  %>% 
-    dplyr::select(c(cell_id, prov_id, iso, year, GCP_1deg))  %>% 
-    group_by(cell_id, prov_id, year)  %>% 
-    mutate(GCP_1deg = sum(GCP_1deg))  %>% 
-    ungroup()  %>% 
-    distinct(cell_id, prov_id, year, GCP_1deg)
+  dplyr::select(c(cell_id, prov_id, iso, year, GCP_1deg))  %>% 
+  group_by(cell_id, prov_id, year)  %>% 
+  mutate(GCP_1deg = sum(GCP_1deg))  %>% 
+  ungroup()  %>% 
+  distinct(cell_id, prov_id, year, GCP_1deg)
 
 # read the predicted GDP
 load("step7_robust_analysis/model_wo_developing/outputs/pred_1deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust_upto_2019.RData")
 china_predicted <- pred_1deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust_upto_2019  %>% 
-    filter(iso == "CHN")  %>% 
-    as.data.frame() %>% 
-    dplyr::select(c(cell_id, id, iso, year, pred_GCP_1deg)) %>% 
-    mutate(prov_id = case_when(
-      id == "Hubei_CHN" ~ "42",
-      id == "Sichuan_CHN" ~ "51",
-      id == "Guangdong_CHN" ~ "44",
-      id == "Zhejiang_CHN" ~ "33",
-      id == "Jiangsu_CHN" ~ "32",
-      id == "Shandong_CHN" ~ "37",
-      id == "Henan_CHN" ~ "41"
-    ))
+  filter(iso == "CHN")  %>% 
+  as.data.frame() %>% 
+  dplyr::select(c(cell_id, id, iso, year, pred_GCP_1deg)) %>% 
+  mutate(prov_id = case_when(
+    id == "Hubei_CHN" ~ "42",
+    id == "Sichuan_CHN" ~ "51",
+    id == "Guangdong_CHN" ~ "44",
+    id == "Zhejiang_CHN" ~ "33",
+    id == "Jiangsu_CHN" ~ "32",
+    id == "Shandong_CHN" ~ "37",
+    id == "Henan_CHN" ~ "41"
+  ))
 
 # combine
 china_df <- china_truth  %>% 
-    left_join(china_predicted)  %>% 
-    na.omit()  # some of cells are missing because of different sources of geometry
+  left_join(china_predicted)  %>% 
+  na.omit()  # some of cells are missing because of different sources of geometry
 
 yr_group_lvl_pred <- china_df %>% 
-    mutate(yr_levl_group = ifelse(year %in% c(2012:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021"))) %>% 
-    mutate(log_GCP_1deg = log(GCP_1deg), 
-           log_pred_GCP_1deg = log(pred_GCP_1deg)) %>% 
-    filter(is.finite(log_GCP_1deg) & is.finite(log_pred_GCP_1deg)) %>% 
-    group_by(yr_levl_group) %>% 
-    mutate(R2_levl = 1 - sum((log_GCP_1deg - log_pred_GCP_1deg)^2) / sum((log_GCP_1deg - mean(log_GCP_1deg))^2))  %>% 
-    ungroup()
+  mutate(yr_levl_group = ifelse(year %in% c(2012:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 
+  mutate(log_GCP_1deg = log(GCP_1deg), 
+         log_pred_GCP_1deg = log(pred_GCP_1deg)) %>% 
+  filter(is.finite(log_GCP_1deg) & is.finite(log_pred_GCP_1deg)) %>% 
+  group_by(yr_levl_group) %>% 
+  mutate(R2_levl = 1 - sum((log_GCP_1deg - log_pred_GCP_1deg)^2) / sum((log_GCP_1deg - mean(log_GCP_1deg))^2))  %>% 
+  ungroup()
 
 change <- china_df %>%
   arrange(iso, prov_id, cell_id, year) %>% 
@@ -683,10 +691,10 @@ change <- china_df %>%
 
 
 yr_group_chan_pred <- change %>% 
-    mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021"))) %>% 
-    group_by(yr_chan_group) %>% 
-    mutate(R2_chan = 1 - sum((grate_true - grate_pred)^2) / sum((grate_true - mean(grate_true))^2)) %>%
-    ungroup() 
+  mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 
+  group_by(yr_chan_group) %>% 
+  mutate(R2_chan = 1 - sum((grate_true - grate_pred)^2) / sum((grate_true - mean(grate_true))^2)) %>%
+  ungroup() 
 
 yr_group_lvl_pred2 <- yr_group_lvl_pred %>%
   mutate(type = "Log Level:")
@@ -697,18 +705,18 @@ yr_group_chan_pred2 <- yr_group_chan_pred %>%
 combined_data <- bind_rows(yr_group_lvl_pred2, yr_group_chan_pred2) %>%
   mutate(plot_group = paste(type, ifelse(type == "Log Level:", yr_levl_group, yr_chan_group))) %>% 
   mutate(annotation = ifelse(type == "Log Level:", 
-                        sprintf("R² = %.2f%%", R2_levl * 100), 
-                        sprintf("R² = %.2f%%", R2_chan * 100))) %>% 
+                             sprintf("R² = %.2f%%", R2_levl * 100), 
+                             sprintf("R² = %.2f%%", R2_chan * 100))) %>% 
   mutate(plot_group = case_when(
     plot_group == "Log Level: Pre-COVID 2012-2019" ~ "Pre-COVID 2012 to 2019: log(GDP)",
     plot_group == "Log Level: COVID 2020" ~ "COVID 2020: log(GDP)",
-    plot_group == "Log Level: Post-COVID 2021" ~ "Post-COVID 2021: log(GDP)",
+    plot_group == "Log Level: Post-COVID 2021-2022" ~ "Post-COVID 2021 to 2022: log(GDP)",
     plot_group == "Year-over-year Log Change: Pre-COVID 2012-2019" ~ "Pre-COVID 2012 to 2019: \nlog(GDP in t) - log(GDP in t-1)",
     plot_group == "Year-over-year Log Change: COVID 2020" ~ "COVID 2020: \nlog(GDP in 2020) - log(GDP in 2019)",
-    plot_group == "Year-over-year Log Change: Post-COVID 2021" ~ "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)"
+    plot_group == "Year-over-year Log Change: Post-COVID 2021-2022" ~ "Post-COVID 2021 to 2022: \nlog(GDP in t) - log(GDP in t-1)"
   ))
 
-# Create the combined plot
+# Create the combined plot with facet_wrap, using nrow and ncol for layout
 combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_GCP_1deg, grate_true), 
                                            y = ifelse(type == "Log Level:", log_pred_GCP_1deg, grate_pred))) +
   geom_point(size = 1, alpha = 0.7, color = "blue") +
@@ -718,10 +726,10 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
        y = "Predicted Values: 1deg Cells") +
   facet_wrap(~ factor(plot_group, levels = c("Pre-COVID 2012 to 2019: log(GDP)", 
                                              "COVID 2020: log(GDP)", 
-                                             "Post-COVID 2021: log(GDP)",
+                                             "Post-COVID 2021 to 2022: log(GDP)",
                                              "Pre-COVID 2012 to 2019: \nlog(GDP in t) - log(GDP in t-1)", 
                                              "COVID 2020: \nlog(GDP in 2020) - log(GDP in 2019)", 
-                                             "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)")),
+                                             "Post-COVID 2021 to 2022: \nlog(GDP in t) - log(GDP in t-1)")),
              nrow = 2, ncol = 3, scales = "free") +
   theme_minimal(base_size = 14) +
   theme(
@@ -742,32 +750,32 @@ ggsave("step7_robust_analysis/model_wo_developing/outputs/log_level_change_r2_us
 # read the true cell GDP
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_1deg.RData")
 truth <- predict_data_complete_1deg  %>% 
-    mutate(iso = ifelse(substr(iso,1,3) == "USA", "USA", iso)) %>%
-    dplyr::select(c(cell_id, iso, year, GCP_1deg))  %>% 
-    group_by(cell_id, iso, year)  %>% 
-    mutate(GCP_1deg = sum(GCP_1deg))  %>% 
-    ungroup()  %>% 
-    distinct(cell_id, iso, year, GCP_1deg)
-    
+  mutate(iso = ifelse(substr(iso,1,3) == "USA", "USA", iso)) %>%
+  dplyr::select(c(cell_id, iso, year, GCP_1deg))  %>% 
+  group_by(cell_id, iso, year)  %>% 
+  mutate(GCP_1deg = sum(GCP_1deg))  %>% 
+  ungroup()  %>% 
+  distinct(cell_id, iso, year, GCP_1deg)
+
 # read the predicted GDP
 load("step7_robust_analysis/model_wo_developing/outputs/GDPC_1deg_postadjust_pop_dens_no_extra_adjust_up_to_2019.RData")
 predicted <- GDPC_1deg_postadjust_pop_dens_no_extra_adjust_up_to_2019  %>% 
-    as.data.frame()  %>% 
-    dplyr::select(c(cell_id, iso, year, predicted_GCP)) %>% 
-    filter(iso %in% unique(truth$iso))
+  as.data.frame()  %>% 
+  dplyr::select(c(cell_id, iso, year, predicted_GCP)) %>% 
+  filter(iso %in% unique(truth$iso))
 
 df <- truth  %>% 
-    left_join(predicted) 
+  left_join(predicted) 
 
 yr_group_lvl_pred <- df %>% 
-    mutate(yr_levl_group = ifelse(year %in% c(2012:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021"))) %>% 
-    mutate(log_GCP_1deg = log(GCP_1deg), 
-           log_pred_GCP_1deg = log(predicted_GCP)) %>% 
-    filter(is.finite(log_GCP_1deg) & is.finite(log_pred_GCP_1deg)) %>%     
-    group_by(yr_levl_group) %>% 
-    mutate(R2_levl = 1 - sum((log_GCP_1deg - log_pred_GCP_1deg)^2) / sum((log_GCP_1deg - mean(log_GCP_1deg))^2),
-           GDP_loss = sum(abs(log_GCP_1deg - log_pred_GCP_1deg)) / (2*sum(log_GCP_1deg)))  %>% 
-    ungroup() 
+  mutate(yr_levl_group = ifelse(year %in% c(2012:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 
+  mutate(log_GCP_1deg = log(GCP_1deg), 
+         log_pred_GCP_1deg = log(predicted_GCP)) %>% 
+  filter(is.finite(log_GCP_1deg) & is.finite(log_pred_GCP_1deg)) %>%     
+  group_by(yr_levl_group) %>% 
+  mutate(R2_levl = 1 - sum((log_GCP_1deg - log_pred_GCP_1deg)^2) / sum((log_GCP_1deg - mean(log_GCP_1deg))^2),
+         GDP_loss = sum(abs(log_GCP_1deg - log_pred_GCP_1deg)) / (2*sum(log_GCP_1deg)))  %>% 
+  ungroup() 
 
 change <- df %>%
   arrange(iso, cell_id, year) %>% # Arrange data by iso, cell_id, and year
@@ -781,10 +789,10 @@ change <- df %>%
   filter(is.finite(grate_pred) & is.finite(grate_true))
 
 yr_group_chan_pred <- change %>% 
-    mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021"))) %>% 
-    group_by(yr_chan_group) %>% 
-    mutate(R2_chan = 1 - sum((grate_true - grate_pred)^2) / sum((grate_true - mean(grate_true))^2)) %>%
-    ungroup() 
+  mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 
+  group_by(yr_chan_group) %>% 
+  mutate(R2_chan = 1 - sum((grate_true - grate_pred)^2) / sum((grate_true - mean(grate_true))^2)) %>%
+  ungroup() 
 
 yr_group_lvl_pred2 <- yr_group_lvl_pred %>%
   mutate(type = "Log Level:")
@@ -795,15 +803,15 @@ yr_group_chan_pred2 <- yr_group_chan_pred %>%
 combined_data <- bind_rows(yr_group_lvl_pred2, yr_group_chan_pred2) %>%
   mutate(plot_group = paste(type, ifelse(type == "Log Level:", yr_levl_group, yr_chan_group))) %>% 
   mutate(annotation = ifelse(type == "Log Level:", 
-                        sprintf("R² = %.2f%%", R2_levl * 100), 
-                        sprintf("R² = %.2f%%", R2_chan * 100))) %>% 
+                             sprintf("R² = %.2f%%", R2_levl * 100), 
+                             sprintf("R² = %.2f%%", R2_chan * 100))) %>% 
   mutate(plot_group = case_when(
     plot_group == "Log Level: Pre-COVID 2012-2019" ~ "Pre-COVID 2012 to 2019: log(GDP)",
     plot_group == "Log Level: COVID 2020" ~ "COVID 2020: log(GDP)",
-    plot_group == "Log Level: Post-COVID 2021" ~ "Post-COVID 2021: log(GDP)",
+    plot_group == "Log Level: Post-COVID 2021-2022" ~ "Post-COVID 2021 to 2022: log(GDP)",
     plot_group == "Year-over-year Log Change: Pre-COVID 2012-2019" ~ "Pre-COVID 2012 to 2019: \nlog(GDP in t) - log(GDP in t-1)",
     plot_group == "Year-over-year Log Change: COVID 2020" ~ "COVID 2020: \nlog(GDP in 2020) - log(GDP in 2019)",
-    plot_group == "Year-over-year Log Change: Post-COVID 2021" ~ "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)"
+    plot_group == "Year-over-year Log Change: Post-COVID 2021-2022" ~ "Post-COVID 2021 to 2022: \nlog(GDP in t) - log(GDP in t-1)"
   ))
 
 # Create the combined plot with facet_wrap, using nrow and ncol for layout
@@ -816,10 +824,10 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
        y = "Predicted Values: 1deg Cells") +
   facet_wrap(~ factor(plot_group, levels = c("Pre-COVID 2012 to 2019: log(GDP)", 
                                              "COVID 2020: log(GDP)", 
-                                             "Post-COVID 2021: log(GDP)",
+                                             "Post-COVID 2021 to 2022: log(GDP)",
                                              "Pre-COVID 2012 to 2019: \nlog(GDP in t) - log(GDP in t-1)", 
                                              "COVID 2020: \nlog(GDP in 2020) - log(GDP in 2019)", 
-                                             "Post-COVID 2021: \nlog(GDP in 2021) - log(GDP in 2020)")),
+                                             "Post-COVID 2021 to 2022: \nlog(GDP in t) - log(GDP in t-1)")),
              nrow = 2, ncol = 3, scales = "free") +
   theme_minimal(base_size = 14) +
   theme(
@@ -837,14 +845,14 @@ ggsave("step7_robust_analysis/model_wo_developing/outputs/log_level_change_r2_tr
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Also conduct the pop vs GDP test
+# I also want to do the pop vs GDP test
 
 # 1deg
 pred_1deg <- read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_1deg_postadjust_pop_dens_no_extra_adjust_wo_devlping.csv") %>% 
   as.data.frame() %>% 
   dplyr::select(c(cell_id, iso, year, predicted_GCP, pop_cell)) %>% 
   mutate(log_GCP = log(predicted_GCP),
-        log_pop = log(pop_cell/1000000)) %>%
+         log_pop = log(pop_cell/1000000)) %>%
   mutate(inf = ifelse(is.infinite(log_GCP) | is.infinite(log_pop), 1, 0)) %>% 
   filter(inf != 1) %>%
   mutate(adjusted_log_GCP = log_GCP - log_pop)
@@ -854,7 +862,7 @@ pred_0_5deg <- read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC_
   as.data.frame() %>% 
   dplyr::select(c(cell_id, subcell_id, iso, year, predicted_GCP, pop_cell)) %>% 
   mutate(log_GCP = log(predicted_GCP),
-        log_pop = log(pop_cell/1000000)) %>%
+         log_pop = log(pop_cell/1000000)) %>%
   mutate(inf = ifelse(is.infinite(log_GCP) | is.infinite(log_pop), 1, 0)) %>% 
   filter(inf != 1) %>%
   mutate(adjusted_log_GCP = log_GCP - log_pop)
@@ -864,7 +872,7 @@ pred_0_25deg <- read.csv("step7_robust_analysis/model_wo_developing/outputs/GDPC
   as.data.frame() %>% 
   dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, predicted_GCP, pop_cell)) %>% 
   mutate(log_GCP = log(predicted_GCP),
-        log_pop = log(pop_cell/1000000)) %>%
+         log_pop = log(pop_cell/1000000)) %>%
   mutate(inf = ifelse(is.infinite(log_GCP) | is.infinite(log_pop), 1, 0)) %>% 
   filter(inf != 1) %>%
   mutate(adjusted_log_GCP = log_GCP - log_pop)
@@ -901,19 +909,19 @@ poly0 <- lm_robust(adjusted_log_GCP ~ 1, data = pred_1deg, se_type = "HC1")
 for (i in c(4)){
   
   model <- lm_robust(log_GCP ~ 1 + poly(log_pop, degree = i, raw = TRUE), data = pred_1deg, se_type = "HC1")
-
+  
   pred_with_ci <- predict(model, newdata = pred_1deg, se.fit = TRUE, interval = "confidence", level = 0.95)
   
   # Extract fitted values and confidence intervals
   pred_1deg$fitted <- pred_with_ci$fit[, "fit"]
   pred_1deg$lower <- pred_with_ci$fit[, "lwr"]
   pred_1deg$upper <- pred_with_ci$fit[, "upr"]
-
+  
   # Define column names for easier plotting
   fit_col <- paste0("fitted_GCP_share", i)
   lower_col <- paste0("ci_lower", i)
   upper_col <- paste0("ci_upper", i)
-
+  
   # Create the plot
   p1 <- ggplot(pred_1deg, aes(x = log_pop, y = log_GCP)) +
     geom_point(size = 0.1, color = "#858585") +
@@ -921,7 +929,7 @@ for (i in c(4)){
     geom_abline(intercept = coef(poly0)[1], slope = 1, linetype = "dashed", color = "#BE1508", size = 1) +
     labs(subtitle = paste("1deg cell predictions: all years"),
          x = "log Pop Count (million)",
-         y = "log GDP (const2017 billion USD)") +
+         y = "log GDP (const2021 billion USD)") +
     scale_x_continuous(limits = x_limits) +
     scale_y_continuous(limits = y_limits) +         
     theme_bw(base_size = 14) +
@@ -938,11 +946,11 @@ for (i in c(4)){
     ) +
     coord_fixed() +
     theme(aspect.ratio = 1)
-    # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
-    # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
-
-    print(format_equation(model, 4))
-    print(format_red_line_equation(coef(poly0)[1]))
+  # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
+  # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
+  
+  print(format_equation(model, 4))
+  print(format_red_line_equation(coef(poly0)[1]))
 }
 
 # 0.5deg
@@ -951,19 +959,19 @@ poly0 <- lm_robust(adjusted_log_GCP ~ 1, data = pred_0_5deg, se_type = "HC1")
 for (i in c(4)){
   
   model <- lm_robust(log_GCP ~ 1 + poly(log_pop, degree = i, raw = TRUE), data = pred_0_5deg, se_type = "HC1")
-
+  
   pred_with_ci <- predict(model, newdata = pred_0_5deg, se.fit = TRUE, interval = "confidence", level = 0.95)
   
   # Extract fitted values and confidence intervals
   pred_0_5deg$fitted <- pred_with_ci$fit[, "fit"]
   pred_0_5deg$lower <- pred_with_ci$fit[, "lwr"]
   pred_0_5deg$upper <- pred_with_ci$fit[, "upr"]
-
+  
   # Define column names for easier plotting
   fit_col <- paste0("fitted_GCP_share", i)
   lower_col <- paste0("ci_lower", i)
   upper_col <- paste0("ci_upper", i)
-
+  
   # Create the plot
   p2 <- ggplot(pred_0_5deg, aes(x = log_pop, y = log_GCP)) +
     geom_point(size = 0.1, color = "#858585") +
@@ -971,7 +979,7 @@ for (i in c(4)){
     geom_abline(intercept = coef(poly0)[1], slope = 1, linetype = "dashed", color = "#BE1508", size = 1) +
     labs(subtitle = paste("0.5deg cell predictions: all years"),
          x = "log Pop Count (million)",
-         y = "log GDP (const2017 billion USD)") +
+         y = "log GDP (const2021 billion USD)") +
     scale_x_continuous(limits = x_limits) +
     scale_y_continuous(limits = y_limits) +         
     theme_bw(base_size = 14) +
@@ -988,11 +996,11 @@ for (i in c(4)){
     ) +
     coord_fixed() +
     theme(aspect.ratio = 1)
-    # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
-    # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
-
-    print(format_equation(model, 4))
-    print(format_red_line_equation(coef(poly0)[1]))
+  # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
+  # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
+  
+  print(format_equation(model, 4))
+  print(format_red_line_equation(coef(poly0)[1]))
 }
 
 # 0.25deg
@@ -1001,19 +1009,19 @@ poly0 <- lm_robust(adjusted_log_GCP ~ 1, data = pred_0_25deg, se_type = "HC1")
 for (i in c(4)){
   
   model <- lm_robust(log_GCP ~ 1 + poly(log_pop, degree = i, raw = TRUE), data = pred_0_25deg, se_type = "HC1")
-
+  
   pred_with_ci <- predict(model, newdata = pred_0_25deg, se.fit = TRUE, interval = "confidence", level = 0.95)
   
   # Extract fitted values and confidence intervals
   pred_0_25deg$fitted <- pred_with_ci$fit[, "fit"]
   pred_0_25deg$lower <- pred_with_ci$fit[, "lwr"]
   pred_0_25deg$upper <- pred_with_ci$fit[, "upr"]
-
+  
   # Define column names for easier plotting
   fit_col <- paste0("fitted_GCP_share", i)
   lower_col <- paste0("ci_lower", i)
   upper_col <- paste0("ci_upper", i)
-
+  
   # Create the plot
   p3 <- ggplot(pred_0_25deg, aes(x = log_pop, y = log_GCP)) +
     geom_point(size = 0.1, color = "#858585") +
@@ -1021,7 +1029,7 @@ for (i in c(4)){
     geom_abline(intercept = coef(poly0)[1], slope = 1, linetype = "dashed", color = "#BE1508", size = 1) +
     labs(subtitle = paste("0.25deg cell predictions: all years"),
          x = "log Pop Count (million)",
-         y = "log GDP (const2017 billion USD)") +
+         y = "log GDP (const2021 billion USD)") +
     scale_x_continuous(limits = x_limits) +
     scale_y_continuous(limits = y_limits) +  
     theme_bw(base_size = 14) +           
@@ -1038,17 +1046,17 @@ for (i in c(4)){
     ) +
     coord_fixed() +
     theme(aspect.ratio = 1)
-    # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
-    # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
-
-    print(format_equation(model, 4))
-    print(format_red_line_equation(coef(poly0)[1]))
+  # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
+  # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
+  
+  print(format_equation(model, 4))
+  print(format_red_line_equation(coef(poly0)[1]))
 }
 
 final_plot_with_title <- grid.arrange(
   top = textGrob("", gp = gpar(fontsize = 15, fontface = "bold")),
   arrangeGrob(p1, p2, p3, ncol = 3, 
-  nrow = 1))
+              nrow = 1))
 
 ggsave("step7_robust_analysis/model_wo_developing/outputs/not_just_pop_distr.png", 
        plot = final_plot_with_title,

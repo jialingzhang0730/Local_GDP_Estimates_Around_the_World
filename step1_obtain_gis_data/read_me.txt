@@ -1,0 +1,1 @@
+This step is identical to the one in "version1_year2012_2021". Refer to the folder "version1_year2012_2021/step1_obtain_gis_data" for the necessary inputs, outputs, and code.

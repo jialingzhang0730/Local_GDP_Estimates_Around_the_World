@@ -4,9 +4,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
-
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -21,13 +18,19 @@ library(gdata)
 library(units)
 library(tidyverse)
 
-# read the polygons
-simplified_poly <- read_sf("step2_obtain_gdp_data/outputs/training_poly_sample.gpkg")
+# ------------------------------------------------- #        
+# Read the polygons
+simplified_poly <- read_sf("version2_year2012_2022/step2_obtain_gdp_data/outputs/training_poly_sample.gpkg")
 
+# ------------------------------------------------- #        
 # Obtain training isos county-level population (LandScan)
 tic("Population")
 
-population_files <- list.files("step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:22] #choose years only 2012-2021
+# Select all population files for years 2012-2022
+population_files <- list.files("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", 
+                               pattern = "landscan-global", full.names = TRUE)
+# Filter for years 2012-2022
+population_files <- population_files[grepl(paste(2012:2022, collapse="|"), population_files)]
 
 pop_extracted <- mclapply(population_files, mc.cores = 5, FUN = function(filename){
   
@@ -35,15 +38,16 @@ pop_extracted <- mclapply(population_files, mc.cores = 5, FUN = function(filenam
   
   extract <- cbind(simplified_poly, exact_extract(r, simplified_poly, 'sum')) %>% 
               rename(pop = exact_extract.r..simplified_poly...sum..)
-  save(extract, file = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_county_pop/land_pop_extracted_", as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
+  save(extract, file = paste0("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_county_pop/land_pop_extracted_", 
+                              as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
 
 })
 toc()
 
-years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021")
+years <- 2012:2022
 land_pop_full <- NULL 
 for (year in years){
-          load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_county_pop/land_pop_extracted_", year, ".RData"))
+          load(paste0("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_county_pop/land_pop_extracted_", year, ".RData"))
           extract <- extract %>%
               mutate(year = as.integer(year))
                 
@@ -54,10 +58,11 @@ for (year in years){
           }
 }
 
-# Ensure that Alaska's population is excluded from the USA's national population.
-# It seems that the IMF's USA national population data does not include US territories, which aligns with our requirements.
+# ------------------------------------------------- #        
+# Don't forget that Alaska's population should be excluded from USA's national population
+# I double checked that the IMF USA national population does not include US territories, that is what we want here
 
-alaska <- read_sf("step2_obtain_gdp_data/outputs/world_poly.gpkg")  %>% 
+alaska <- read_sf("version2_year2012_2022/step2_obtain_gdp_data/outputs/world_poly.gpkg")  %>% 
     filter(iso == "Ala") # remember we assign Alaska a fake iso code "Ala"
 
 alaska_pop <- mclapply(population_files, mc.cores = 5, FUN = function(filename){
@@ -69,24 +74,25 @@ alaska_pop <- mclapply(population_files, mc.cores = 5, FUN = function(filename){
     do.call(rbind, .)  %>% 
     as.data.frame()  %>% 
     dplyr::select(-c(geom))  %>% 
-    mutate(id = "Ala", iso = "USA") # allow for adjustments to the population share of US counties below
+    mutate(id = "Ala", iso = "USA") # change the iso name, so that we can change US county's population share below
 
-# Save Alaska's population, as it will be used later in the analysis.
-write.csv(alaska_pop, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/alaska_population.csv")
+# let me save it because we will still use alaska's population later
+write.csv(alaska_pop, "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/alaska_population.csv", row.names = FALSE)
 
-# The goal is to obtain each county's national population share to ensure the sum matches the national population.
-# Thus, Alaska’s population should only affect the population share of USA counties below.
+# ------------------------------------------------- # 
+# actually we want to get each county's national population share here, so that we can rescale to match the sum with national population
+# Thus, what Alaska should affect is the USA county's population share below
 
 land_pop_extracted_train_county <- bind_rows(land_pop_full, alaska_pop)  %>% 
                       group_by(iso, year)  %>% 
                       mutate(pop_share = pop/sum(pop))  %>% 
                       ungroup()  %>% 
-                      filter(id != "Ala") # Alaska's data is not included in the training sample, we use it here only to obtain the correct US county national population share
+                      filter(id != "Ala") # we do not need Alaska
 
-save(land_pop_extracted_train_county, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/land_pop_extracted_train_county.RData")
+save(land_pop_extracted_train_county, file = "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/land_pop_extracted_train_county.RData")
 
-
-# Retrieve the average areas of the subnational units for each country.
+# ------------------------------------------------- #
+# now I want to get the average areas of those subnational units for each country
 
 sub_area <- land_pop_extracted_train_county %>% 
     filter(year == 2012) %>% 
@@ -98,4 +104,6 @@ sub_area <- land_pop_extracted_train_county %>%
     ungroup() %>% 
     distinct(iso, avr_area)
 
-write.csv(sub_area, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_subnational_area.csv")
+write.csv(sub_area, "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_subnational_area.csv", row.names = FALSE)
+
+# eof ----

@@ -40,5 +40,29 @@ The workflow integrates **QGIS** into R through the `qgisprocess` package, allow
    - Install the necessary R packages.
    - Run all the required R scripts in order.  
 
+
+## Changes in Version 2 
+
+This dataset was updated to Version 2 on 16th December 2025. Version 2 produces cell GDP estimates for the period 2012-2022 using predictors that are updated to the year 2022.
+
+When updating the results to Version 2, we have made the following changes relative to Version 1:
+
+-  National GDP data for all countries were updated as of September 15, 2025. At that time, national GDP data for Greenland were not available for 2022; consequently, GDP predictions for Greenland are unavailable for that year.
+
+- New vintages of population and national GDP data from IMF World Economic Outlook (WEO) are used (downloaded September 15, 2025), which may contain revisions to 2012--2021 GDP and population figures for certain countries compared to Version 1.
+
+- Subnational GDP data from OECD Explorer for Japan and Norway are not available for 2022. However, Japan's 2020 subnational data, which was previously unavailable in Version 1, is now included in Version 2.
+    
+- For subregional GDP data of certain developing countries (see Appendix), the DOSE dataset has been updated from Version 2 to Version 9.
+
+- Version 2 reports GDP predictions in Constant 2021 USD, replacing the Constant 2017 USD used in Version 1.
+
+- We identified that the tuned parameters in Version 1 were locally optimal rather than globally optimal. By substantially extending the parameter search range during training, we achieved significant performance gains. The out-of-sample $R^2$ for annual change in log GDP improved from 63.4\% to 77.7\% at the 1-degree level, from 66.1\% to 76.0\% at the 0.5-degree level, and from 70.5\% to 81.9\% at the 0.25-degree level. These improvements enable Version 2 to better capture regional nuances in the yearly evolution of GDP.
+
+- There are no changes to the predictors used or their data sources. Please refer to the Appendix for details.
+
+- Fixed a typo in Version 1 shapefiles where the ISO code for Alaska was incorrectly set to ``Ala'' instead of ``USA''.
+
+
 ## Acknowledgement
 We thank Reigner Kane, Sreyas Mahadevan, and Jordan Rosenthal-Kay for excellent research assistance and contributions during the initial stages of this project.

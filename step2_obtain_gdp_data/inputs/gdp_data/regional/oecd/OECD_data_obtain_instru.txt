@@ -1,2 +1,7 @@
-Download the OECD data in the same format as the files stored in this Dropbox: 
+
+I have not included the full OECD regional data in this folder as otherwise the file size of the GitHub replication package would be too large.
+
+If you would like to access the vintage of data used for the posted results, please download the OECD data in the same format as the files stored in folder "version2_year2012_2022" using the following Dropbox link: 
 https://www.dropbox.com/scl/fo/93kjq4ts5h0s80bnl8wtv/ANU-n49oxlgxBI-PpNHzgf0?rlkey=zzf3iavfj6mfk7d8struj8hrm&st=w2pqi7ss&dl=0
+
+For access of the OECD data used in the previous version (Version 1), please visit the folder "version1_year2012_2021" on Dropbox using the same link.

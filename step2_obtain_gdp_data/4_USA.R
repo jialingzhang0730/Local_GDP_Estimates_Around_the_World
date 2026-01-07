@@ -1,6 +1,9 @@
 # --------------------------------- Task Summary --------------------------------- #
 # This file retrieves GDP data for the USA at the county, state, and national 
-#   levels, and processes the associated geometries.
+# levels for all available years, and processes the associated geometries.
+#
+# Based on the BEA, estimates of GDP for previous years are revised, so they are 
+# also updated here. 
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
@@ -15,9 +18,10 @@ library(sf)
 library(jsonlite)
 library(qgisprocess)
 
-# Obtain GDP data in current dollars: year 2001 - 2021
+# ------------------------------------------------- #
+# Obtain GDP data in current dollars: year 2001 - 2022
 
-county_gdp <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2021.csv")  %>% 
+county_gdp <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2022.csv")  %>% 
   filter(LineCode %in% c(1))  %>% # 1 stands for All industry
   dplyr::select(-c(Region, TableName, IndustryClassification, Description, Unit))  %>% 
   pivot_longer(cols = starts_with("X"),
@@ -38,9 +42,9 @@ county_gdp <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP
          rgdp_total = as.numeric(rgdp_total))  %>% 
   mutate(across(.cols = matches("rgdp_"),
                 .fns = ~ .x/1000))  %>% # in millions of $
-  filter(substr(fips,1,2) != "02") # let's do not include Alaska's county level data, because the geom keeps changing; consider it as a seaprate big country
+  filter(substr(fips,1,2) != "02") # let's do not include Alaska's county level data, because the geom keeps changing; consider it as a separate big country
 
-state_ctry_gdp <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2021.csv")  %>% 
+state_ctry_gdp <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2022.csv")  %>% 
   filter(LineCode %in% c(1))  %>% # 1 stands for All industry
   dplyr::select(-c(Region, TableName, IndustryClassification, Description, Unit))  %>% 
   pivot_longer(cols = starts_with("X"),
@@ -71,8 +75,29 @@ state_gdp <- filter(state_ctry_gdp, name != "United States") %>%
   mutate(iso = "USA") %>% 
   left_join(country_gdp)
 
+county_gdp_recoded <- county_gdp %>% 
+  mutate(min_admin_unit = 3) %>% 
+  rename_with(matches("rgdp_"), .fn = ~ paste0("admin_3_", .x)) %>% 
+  rename(admin_3_name = name) %>% 
+  left_join(state_gdp)
+
+training_df <- county_gdp_recoded %>%
+  mutate(id = as.character(fips)) %>% 
+  rename_with(matches("admin_2|admin_1"), 
+              .fn = ~ paste0(str_sub(.x, 1, 8), "parent_", str_sub(.x, 9, -1))) %>% 
+  pivot_longer(cols = matches("admin_2|admin_1"),
+               names_to = c("parent_admin_unit", ".value"),
+               names_pattern = "admin_(\\d)_(.+)") %>% 
+  rename_with(starts_with("admin_3"), .fn = ~ gsub("admin_3", "unit", .x)) %>% 
+  dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
+         parent_admin_unit, parent_name, matches("parent_rgdp"))
+
+write.csv(county_gdp_recoded, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_gdp_clean.csv", row.names = F)
+write.csv(training_df, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_training_data.csv", row.names = F)
+write.csv(state_gdp, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_state_gdp.csv", row.names = F)
+
 # ------------------------------------------------- #
-# Create shapefiles -----
+# Create shapefiles and remove large inland waters
 
 county_sf_2020 <- counties(cb = T, year = 2020) %>% 
   rename(name = NAME, fips = GEOID, state_fips = STATEFP)  %>% 
@@ -84,22 +109,21 @@ county_sf_2020 <- counties(cb = T, year = 2020) %>%
                           "Great Lakes", "Plains", "Southeast",
                           "Southwest", "Rocky Mountain", "Far West")) %>% 
   filter(!str_detect(fips, "^69|^78|^60|^66")) %>%
-  filter(state_fips != "02")  %>% # remove Alaska's county geometry
+  filter(state_fips != "02")  %>% # I do not want Alaska's county geometry
   dplyr::select(name, fips, state_fips, geometry) %>% 
   st_transform("epsg:4326")
 
 county_sf_pre <- county_gdp  %>% 
   left_join(county_sf_2020)  %>% 
-  st_as_sf() # there are some rows with empty geometry because BEA did some modifications to FIPS codes; Address these rows below to ensure the geometries align with the GDP data.
+  st_as_sf() # there are some with empty geometry because BEA did some modifications to FIPS codes; lets deal with it below
 
 # BEA did some modifications to FIPS codes:
-# 1. Kalawao County in Hawaii is combined with Maui County and the combined area is designated with fips code 15901
+# 1. Kalawao County, Hawaii is combined with Maui County and combined area is designated 15901
 # 2. The independent cities of Virginia with populations of less than 100,000 have been combined with an adjacent county and 
 #       given codes beginning with 51901. In the name of the combined area, the county name appears first and is followed by the city name(s).
 # 3. Menominee County, Wisconsin is combined with Shawano County for 1969–1988 as 55901. Separate estimates for Menominee and Shawano Counties begin in 1989.
 
-# Important: whenenver you update data, please check whether those modification changes
-#   they should be shown in the place where you download the GDP data (See Appendix for where to download the data)
+# Important: whenever you update data, please check whether those modifications change!!!!!!!!
 
 which_county <- county_sf_pre  %>% 
   filter(st_is_empty(.))  %>% 
@@ -114,7 +138,7 @@ kala_maui <- county_sf_2020  %>%
             geometry = st_union(geometry))
 
 fremont_yellowstone <- county_sf_2020  %>% 
-  filter(name %in% c("Fremont"), fips == "16043")  %>% # The geometry of Fremont county already contains the geom of Yellowstone park, so we only need to change the name of the geometry
+  filter(name %in% c("Fremont"), fips == "16043")  %>% # The geometry of Fremont county already contains the geom of Yellowstone park
   mutate(name = "Fremont (includes Yellowstone Park)")
 
 lagrange <- county_sf_2020  %>% 
@@ -125,11 +149,11 @@ bsc <- county_sf_2020  %>%
   filter(fips %in% c("24510", "29510", "32510"))  %>% 
   mutate(name = paste0(name, " (Independent City)"))
 
-# almost have to redo everything of Viginia
+# almost have to redo everything of Virginia
 indp_city_51 <- county_sf_2020  %>% 
   filter(name %in% c("Baltimore", "St. Louis", "Carson City", "Alexandria", "Chesapeake", "Hampton", "Newport News", "Norfolk",
                      "Portsmouth", "Richmond", "Roanoke City", "Suffolk", "Virginia Beach"), state_fips == "51")  %>% 
-  filter(fips != "51159") %>% # There are two counties named Richmond in Viginia, the one with fips code 51760 is what we need to change. 
+  filter(fips != "51159") %>% # There are two counties named Richmond in Virginia, the one with fips code 51760 is what we need to change. The other already matches with county gdp
   mutate(name = ifelse(name == "Roanoke City", "Roanoke (Independent City)", paste0(name, " (Independent City)")))
 
 albe_charlo <- county_sf_2020  %>% 
@@ -313,50 +337,39 @@ check <- county_gdp  %>%
   left_join(county_sf)  %>% 
   filter(st_is_empty(geom)) # it is fine that Broomfield's rgdp_total is NA in 2001, because it is founded in 2002
 
-county_gdp_recoded <- county_gdp %>% 
-  mutate(min_admin_unit = 3) %>% 
-  rename_with(matches("rgdp_"), .fn = ~ paste0("admin_3_", .x)) %>% 
-  rename(admin_3_name = name) %>% 
-  left_join(state_gdp)
-
-training_df <- county_gdp_recoded %>%
-  mutate(id = as.character(fips)) %>% 
-  rename_with(matches("admin_2|admin_1"), 
-              .fn = ~ paste0(str_sub(.x, 1, 8), "parent_", str_sub(.x, 9, -1))) %>% 
-  pivot_longer(cols = matches("admin_2|admin_1"),
-               names_to = c("parent_admin_unit", ".value"),
-               names_pattern = "admin_(\\d)_(.+)") %>% 
-  rename_with(starts_with("admin_3"), .fn = ~ gsub("admin_3", "unit", .x)) %>% 
-  dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
-         parent_admin_unit, parent_name, matches("parent_rgdp"))
-  
 country_sf <- county_sf_2020 %>% 
   filter(state_fips %in% state_gdp$state_fips) %>% 
   summarize(name = "United States", admin_unit = 1, geom = st_union(geometry)) %>% 
   mutate(iso = "USA")
 
-st_write(country_sf, "step2_obtain_gdp_data/temp/usa_admin_1_with_waters.gpkg", append = F)
-st_write(county_sf, "step2_obtain_gdp_data/temp/usa_admin_3_with_waters.gpkg", append = F)
+st_write(country_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_1_with_waters.gpkg", append = F)
+st_write(county_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_3_with_waters.gpkg", append = F)
 
-write.csv(county_gdp_recoded, "step2_obtain_gdp_data/temp/usa_gdp_clean.csv", row.names = F)
-write.csv(training_df, "step2_obtain_gdp_data/temp/usa_training_data.csv", row.names = F)
-write.csv(state_gdp, "step2_obtain_gdp_data/temp/usa_state_gdp.csv", row.names = F)
-
-# now remove large inland waters
+# --------------------- Important !!! ---------------------------- #
+# Apply "difference" command in QGIS to get rid of inland large waters
+# and obtain files "temp/usa_admin_1.gpkg" and "temp/usa_admin_3.gpkg":
+#
+#   1. Drag "temp/usa_admin_1_with_waters.gpkg" and "temp/usa_admin_3_with_waters.gpkg" and "Global Lakes and Wetlands Database: Large Lake Polygons (Level 1)" file "glwd_1.shp" into QGIS
+#   2. "glwd_1.shp" file has invalid geometry, so use "Processing/Toolbox/Vector geometry/Fix geometries" to fix it. 
+#       Choose "Linework" (default) for "Repair method". There will be a file named "Fixed geometries" automatically generated.
+#   3. Click "Vector/Geoprocessing Tools/Difference" to exclude waters. Input layer is the "temp/usa_admin_x_with_waters.gpkg" file, and overlay layer is the "Fixed geometries" obtained in step2.
+#   4. obtain files "temp/usa_admin_1.gpkg" and "temp/usa_admin_3.gpkg", choose "CRS" as: "EPSG:4326 - WGS 84"
+# --------------------- Important !!! ---------------------------- #
 
 difference <- qgis_run_algorithm(
   alg = "native:difference",
-  INPUT = "step2_obtain_gdp_data/temp/usa_admin_1_with_waters.gpkg", 
-  OVERLAY = "step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
-  OUTPUT = "step2_obtain_gdp_data/temp/usa_admin_1.gpkg", 
+  INPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_1_with_waters.gpkg", 
+  OVERLAY = "version2_year2012_2022/step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
+  OUTPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_1.gpkg", 
   .quiet = FALSE
 )
 
 difference <- qgis_run_algorithm(
   alg = "native:difference",
-  INPUT = "step2_obtain_gdp_data/temp/usa_admin_3_with_waters.gpkg", 
-  OVERLAY = "step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
-  OUTPUT = "step2_obtain_gdp_data/temp/usa_admin_3.gpkg", 
+  INPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_3_with_waters.gpkg", 
+  OVERLAY = "version2_year2012_2022/step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
+  OUTPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_3.gpkg", 
   .quiet = FALSE
 )
 
+# eof ----

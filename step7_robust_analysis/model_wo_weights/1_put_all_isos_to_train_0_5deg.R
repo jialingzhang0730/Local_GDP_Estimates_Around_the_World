@@ -1,6 +1,5 @@
 # --------------------------------- Task Summary --------------------------------- #
-# This file trains the 0.5-degree random forest model using data from 2012 to 2021.
-# Train the model without weights
+# This file trains the 0.5-degree random forest model using data from 2012 to 2022.
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
@@ -8,49 +7,39 @@ Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 # Load packages
-library(randomForest)
 library(dplyr)
 library(ranger)
 library(tidyverse)
 library(magrittr)
 library(tictoc)
-library(gdata)
-library(ranger)
 library(tidymodels)
-library(speedglm)
 library(vip)
-library(data.table)
 library(parallel)
 library(readxl)
 library(units)
-library(sf)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 
 # ------------------------------------------------- #
 # obtain full training data
-data_train <- read.csv("step4_train_and_tune_log_change/outputs/new_data_train_0_5deg.csv")
-data_valid_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_valid_year_0_5deg.csv")  
-data_valid_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_valid_iso_0_5deg.csv")  
-data_test_year <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_year_0_5deg.csv") 
-data_test_iso <- read.csv("step4_train_and_tune_log_change/outputs/new_data_test_iso_0_5deg.csv") 
-
-developing_group <- c("CHL","COL","IDN","KGZ","PER","PHL","ALB","BIH","BLR",
-                      "MOZ","SRB","UZB","VNM","KEN","LKA","THA","ECU")
+data_train <- read.csv("step4_benchmark_model/outputs/new_data_train_0_5deg.csv")
+data_valid_year <- read.csv("step4_benchmark_model/outputs/new_data_valid_year_0_5deg.csv")  
+data_valid_iso <- read.csv("step4_benchmark_model/outputs/new_data_valid_iso_0_5deg.csv")  
+data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_0_5deg.csv") 
+data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_0_5deg.csv") 
 
 # ----------- calculate real world developed cell and developing cell share ----------- #
-devling_dped_list <- read_excel("step4_train_and_tune_log_change/inputs/list_developed_developing.xlsx")
-developing_isos <- devling_dped_list[,"developing"]
+# we assign weights to the cells in our training sample based on whether they are from developed or developing countries, 
+#   with the weights reflecting the actual proportion of these cells in the real world.
+
+dped_list <- read_excel("step4_benchmark_model/inputs/list_developed_isos.xlsx")
+developed_isos <- dped_list[,"developed"]
 
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predictors_put_in_model_0_5deg.RData")
 
 real_share <- predictors_put_in_model_0_5deg  %>% 
     mutate(iso = ifelse(iso == "Ala", "USA", iso)) %>% 
     as.data.frame() %>% 
-    dplyr::select(-c(geom)) %>% 
     distinct(cell_id, subcell_id, iso) %>% 
-    mutate(is_developing = ifelse(iso %in% developing_isos$developing, 1, 0)) %>% 
+    mutate(is_developing = ifelse(iso %in% developed_isos$developed, 0, 1)) %>% 
     group_by(is_developing) %>%
     summarise(count = n()) %>% 
     mutate(share = count / sum(count))
@@ -59,11 +48,12 @@ real_share <- predictors_put_in_model_0_5deg  %>%
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
   mutate(unit_gdp_af_sum_rescl = state_total_GDP) %>% 
-  mutate(is_developing = ifelse(iso %in% developing_group, 1, 0))
+  mutate(original_order = row_number()) %>%
+  mutate(is_developing = ifelse(iso %in% developed_isos$developed | substr(iso,1,3) == "USA", 0, 1)) %>%
+  arrange(original_order) %>% 
+  dplyr::select(-c(original_order))
 
 ##############################################################################################################################
-`%notin%` <- Negate(`%in%`)
-
 # Since our main task is to use some countries data to predict other countries, the usual cross validation (randomly separate data into x folds) does not work
 # what we want is to randomly pick some countries data to train, and predict on the rest countries to select the best hyperparameters
 # thus here we use group_vfold_cv()
@@ -75,73 +65,150 @@ set.seed(1234567)
 train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
   
   target_var <- "GCP_share_0_5deg"
-  predictor_vars <- c("pop_share", "CO2_bio_manuf_conbust_share", "CO2_bio_heavy_indus_share", "CO2_bio_tspt_share",
+  predictor_vars <- c("pop_total_share","pop_urban_share", "pop_cropland_share", "pop_other_share", "CO2_bio_manuf_conbust_share", "CO2_bio_heavy_indus_share", "CO2_bio_tspt_share",
                       "CO2_non_org_manuf_conbust_share", "CO2_non_org_heavy_indus_share", "CO2_non_org_tspt_share", "NPP_share",
                       "NTL_urban_snow_free_period_share", "NTL_cropland_snow_free_period_share", "NTL_other_snow_free_period_share",
                       "snow_ice_share", "water_share", "urban_share", "forest_share", "cropland_share", "mean_rug", "national_gdpc",
                       "lag_NTL_urban_share", "lag_urban_share", "lag_cropland_share", "lag_NTL_other_share", "lag_NTL_cropland_share", 
                       "lag_CO2_bio_mc_share", "lag_CO2_nonorg_mc_share", "lag_CO2_bio_heavy_indus_share", "lag_CO2_non_org_heavy_indus_share",
-                      "lag_CO2_bio_tspt_share", "lag_CO2_non_org_tspt_share", "lag_pop_share", "lag_NPP_share") 
+                      "lag_CO2_bio_tspt_share", "lag_CO2_non_org_tspt_share", "lag_pop_urban_share", "lag_NPP_share", "lag_pop_cropland_share","lag_pop_other_share")
   formula = as.formula(paste(target_var, "~", paste(predictor_vars, collapse = " + ")))
-
-  rf_recipe <- recipe(formula = formula, data = data_full)
 
   if(tune_par){
     tic(paste0(name, "tuning parameters"))
 
-    # Find a reasonable range for the hyperparameters are hard, but for random forest, the results do not change dramatically around the default values.
-    # 1. Range for `mtry` (number of variables randomly sampled as candidates at each split):
-    #    - usually people use [max(1, p/5), min(p, p/2)] for estimating level, p is total number of predictors, 
-    # 2. Number of trees (`ntree`):
-    #    - Options: 500, 750, 1000, people usually do not go beyond this because it requires too much memory
-    # 3. Minimum node size (`min_n`):
-    #    - Lower bound: 10, because we care more about the generalization of the model
-    #    - Increase if the model suggests larger values, can use increment = 3
-    # if you find better hyperparameters and the results are dramatically improved, let us know.
-
-    rf_grid <- expand.grid(mtry = c(7,10,13,16),
-                           trees = c(750,1000), # for 0.5deg, trees = 500 might be too few, remove this choice to reduce computational costs
-                           min_n = c(10,13,16,19))
+    rf_grid <- expand.grid(mtry = c(28,29,30),
+                           trees = c(1400,1500,1600),
+                           min_n = c(2100,2200,2450,2550,2750,2850,2900,2950,3050,3100,3200,3300,3500,3700,4000))
 
     tune_hyperparameters <- function(params, data_full, df.cv) {
 
       cat("Tuning hyperparameters for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, "\n") # the codes take very long time to run, this is tell us where it is now
 
-      gdp_losses_developed <- numeric(length(df.cv$splits))
-      gdp_losses_developing <- numeric(length(df.cv$splits))
-      gdp_losses_all <- numeric(length(df.cv$splits))
-      mse_developed <- numeric(length(df.cv$splits))
-      mse_developing <- numeric(length(df.cv$splits))
-      mse_all <- numeric(length(df.cv$splits))
-      r2_developed <- numeric(length(df.cv$splits))
-      r2_developing <- numeric(length(df.cv$splits))   
-      r2_all <- numeric(length(df.cv$splits))     
-      chan_r2_developed <- numeric(length(df.cv$splits))
-      chan_r2_developing <- numeric(length(df.cv$splits))   
-      chan_r2_all <- numeric(length(df.cv$splits))    
+      # metric will be saved in those vectors
+      mse_GDP_sh_dped_fit <- numeric(length(folds$splits))
+      mse_GDP_sh_dping_fit <- numeric(length(folds$splits))
+      mse_GDP_sh_all_fit <- numeric(length(folds$splits))      
+      mse_levl_dped_fit <- numeric(length(folds$splits))
+      mse_levl_dping_fit <- numeric(length(folds$splits))
+      mse_levl_all_fit <- numeric(length(folds$splits))
+      mse_chan_dped_fit <- numeric(length(folds$splits))
+      mse_chan_dping_fit <- numeric(length(folds$splits))
+      mse_chan_all_fit <- numeric(length(folds$splits))
+      o_r2_levl_dped_fit <- numeric(length(folds$splits))
+      o_r2_levl_dping_fit <- numeric(length(folds$splits))
+      o_r2_levl_all_fit <- numeric(length(folds$splits))
+      o_r2_chan_dped_fit <- numeric(length(folds$splits))
+      o_r2_chan_dping_fit <- numeric(length(folds$splits))
+      o_r2_chan_all_fit <- numeric(length(folds$splits))
+      w_r2_levl_dped_fit <- numeric(length(folds$splits))
+      w_r2_levl_dping_fit <- numeric(length(folds$splits))
+      w_r2_levl_all_fit <- numeric(length(folds$splits))
+      w_r2_chan_dped_fit <- numeric(length(folds$splits))
+      w_r2_chan_dping_fit <- numeric(length(folds$splits))
+      w_r2_chan_all_fit <- numeric(length(folds$splits))  
 
-      calculate_r2 <- function(true_values, predicted_values) {
-        valid <- true_values > 0 & predicted_values > 0
-        true_log <- log(true_values[valid])
-        predicted_log <- log(predicted_values[valid])        
-        1 - (sum((true_log - predicted_log)^2) / sum((true_log - mean(true_log))^2))
+      mse_GDP_sh_dped <- numeric(length(folds$splits))
+      mse_GDP_sh_dping <- numeric(length(folds$splits))
+      mse_GDP_sh_all <- numeric(length(folds$splits))      
+      mse_levl_dped <- numeric(length(folds$splits))
+      mse_levl_dping <- numeric(length(folds$splits))
+      mse_levl_all <- numeric(length(folds$splits))
+      mse_chan_dped <- numeric(length(folds$splits))
+      mse_chan_dping <- numeric(length(folds$splits))
+      mse_chan_all <- numeric(length(folds$splits))
+      o_r2_levl_dped <- numeric(length(folds$splits))
+      o_r2_levl_dping <- numeric(length(folds$splits))
+      o_r2_levl_all <- numeric(length(folds$splits))
+      o_r2_chan_dped <- numeric(length(folds$splits))
+      o_r2_chan_dping <- numeric(length(folds$splits))
+      o_r2_chan_all <- numeric(length(folds$splits))
+      w_r2_levl_dped <- numeric(length(folds$splits))
+      w_r2_levl_dping <- numeric(length(folds$splits))
+      w_r2_levl_all <- numeric(length(folds$splits))
+      w_r2_chan_dped <- numeric(length(folds$splits))
+      w_r2_chan_dping <- numeric(length(folds$splits))
+      w_r2_chan_all <- numeric(length(folds$splits))   
+
+      # define functions
+      MSE_GDP_sh <- function(true_values, predicted_values) {
+          mean((true_values - predicted_values)^2)
       }
 
-      calculate_mse <- function(true_values, predicted_values) {
-        mean((true_values - predicted_values)^2)
+      MSE_levl <- function(true_values, predicted_values) {
+          valid <- true_values > 0 & predicted_values > 0
+          true_log <- log(true_values[valid])
+          predicted_log <- log(predicted_values[valid])   
+          mean((true_log - predicted_log)^2)
       }
 
-      calculate_chan_r2 <- function(true_values, true_last, predicted_values, predicted_last) {
-        valid <- true_values > 0 & predicted_values > 0 & true_last > 0 & predicted_last > 0
-        true_log <- log(true_values[valid])
-        true_last_log <- log(true_last[valid])
-        true_log_diff <- true_log - true_last_log
-        pred_log <- log(predicted_values[valid])   
-        pred_last_log <- log(predicted_last[valid])
-        pred_log_diff <- pred_log - pred_last_log
-        1 - (sum((true_log_diff - pred_log_diff)^2) / sum((true_log_diff - mean(true_log_diff))^2))
+      MSE_chan <- function(true_values, true_last, predicted_values, predicted_last) {
+          valid <- true_values > 0 & predicted_values > 0 & true_last > 0 & predicted_last > 0
+          true_log <- log(true_values[valid])
+          true_last_log <- log(true_last[valid])
+          true_log_diff <- true_log - true_last_log
+          pred_log <- log(predicted_values[valid])   
+          pred_last_log <- log(predicted_last[valid])
+          pred_log_diff <- pred_log - pred_last_log
+          mean((true_log_diff - pred_log_diff)^2)
       }
-            
+
+      overall_r2_levl <- function(true_values, predicted_values) {
+          valid <- true_values > 0 & predicted_values > 0
+          true_log <- log(true_values[valid])
+          predicted_log <- log(predicted_values[valid])        
+          1 - (sum((true_log - predicted_log)^2) / sum((true_log - mean(true_log))^2))
+      }
+
+      overall_r2_chan <- function(true_values, true_last, predicted_values, predicted_last) {
+          valid <- true_values > 0 & predicted_values > 0 & true_last > 0 & predicted_last > 0
+          true_log <- log(true_values[valid])
+          true_last_log <- log(true_last[valid])
+          true_log_diff <- true_log - true_last_log
+          pred_log <- log(predicted_values[valid])   
+          pred_last_log <- log(predicted_last[valid])
+          pred_log_diff <- pred_log - pred_last_log
+          1 - (sum((true_log_diff - pred_log_diff)^2) / sum((true_log_diff - mean(true_log_diff))^2))
+      }
+
+      within_iso_r2_levl <- function(df, true_var, pred_var) {
+        df_af <- df %>% 
+          filter({{ true_var }} > 0 & {{ pred_var }} > 0) %>%
+          mutate(true_log = log({{ true_var }}),
+                pred_log = log({{ pred_var }})) %>%
+          group_by(iso, year) %>%
+          mutate(iso_mean_true_log = mean(true_log)) %>%
+          ungroup()
+
+        rss <- sum((df_af$true_log - df_af$pred_log)^2)
+        wss <- sum((df_af$true_log - df_af$iso_mean_true_log)^2)
+
+        1 - rss / wss
+      }
+
+      within_iso_r2_chan <- function(df, true_var, true_var_last, pred_var, pred_var_last) {
+        df_af <- df %>% 
+          filter({{ true_var }} > 0 & {{ true_var_last }} > 0 & {{ pred_var }} > 0 & {{ pred_var_last }} > 0) %>% 
+          mutate(true_log = log({{ true_var }}),
+                true_log_last = log({{ true_var_last }}),
+                pred_log = log({{ pred_var }}),
+                pred_log_last = log({{ pred_var_last }}),
+                true_log_diff = true_log - true_log_last,
+                pred_log_diff = pred_log - pred_log_last) %>%
+          group_by(iso, year) %>% 
+          mutate(iso_mean_true_log_diff = mean(true_log_diff)) %>% 
+          ungroup() 
+
+        rss <- sum((df_af$true_log_diff - df_af$pred_log_diff)^2)
+        wss <- sum((df_af$true_log_diff - df_af$iso_mean_true_log_diff)^2)
+
+        1 - rss / wss
+      }
+
+      # define the following to save: n
+      datapoint_counts <- list()
+      var_importance <- list()
+
       for (i in seq_along(df.cv$splits)) {
 
         analysis <- as.data.frame(analysis(df.cv$splits[[i]]))
@@ -149,147 +216,454 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
 
         # fit the model using training folds
         fit <- rand_forest(mtry = params$mtry, trees = params$trees, min_n = params$min_n) %>%
-          set_engine("ranger", verbose = FALSE, seed = 1234567) %>%
+          set_engine("ranger", verbose = FALSE, importance = "impurity", seed = 1234567) %>%
           set_mode("regression") %>%
           fit(formula, data = analysis)
+        
+        var_importance[[i]] <- vi(fit)
 
-        # assess the model using testing fold
-        preds <- as.data.frame(predict(fit, assessment))
-
-        # Calculate Weighted MSE
-        assessment_with_preds <- assessment %>%
-            mutate(pred_GCP_share_0_5deg = preds[,1]) %>% 
-            mutate(pred_GCP_share_0_5deg = ifelse(pop_share == 0, 0, pred_GCP_share_0_5deg))
-
-        developed <- assessment_with_preds %>% filter(is_developing == 0)
-        developing <- assessment_with_preds %>% filter(is_developing == 1)
-
-        mse_developed[i] <- calculate_mse(developed$GCP_share_0_5deg, developed$pred_GCP_share_0_5deg)
-        mse_developing[i] <- calculate_mse(developing$GCP_share_0_5deg, developing$pred_GCP_share_0_5deg)
-        mse_all[i] <- calculate_mse(assessment_with_preds$GCP_share_0_5deg, assessment_with_preds$pred_GCP_share_0_5deg)
-
-        # calculate r2 for log GDP
-        assessment_with_preds <- assessment %>%
-            mutate(pred_GCP_share_0_5deg = preds[,1]) %>%
-            mutate(pred_GCP_share_0_5deg = ifelse(pop_share == 0, 0, pred_GCP_share_0_5deg))  %>% 
-            group_by(iso, year) %>%
-            mutate(pred_GCP_share_0_5deg_rescaled = pred_GCP_share_0_5deg / sum(pred_GCP_share_0_5deg)) %>%
-            ungroup() %>%
-            mutate(pred_GCP_0_5deg = pred_GCP_share_0_5deg_rescaled * state_total_GDP)
-
-        developed <- assessment_with_preds %>% filter(is_developing == 0)
-        developing <- assessment_with_preds %>% filter(is_developing == 1)
-
-        r2_developed[i] <- calculate_r2(developed$GCP_0_5deg, developed$pred_GCP_0_5deg)
-        r2_developing[i] <- calculate_r2(developing$GCP_0_5deg, developing$pred_GCP_0_5deg)
-        r2_all[i] <- calculate_r2(assessment_with_preds$GCP_0_5deg, assessment_with_preds$pred_GCP_0_5deg)
-
-        # Calculate GDP_loss
-        # the formula for GDP_loss has a real value 2 in the denominator because misallocated GDP will be counted twice in the nominator
-        gdp_loss_df <- assessment_with_preds  %>% 
-                    group_by(iso, year)  %>% 
-                    mutate(GDP_loss = sum(abs(GCP_0_5deg - pred_GCP_0_5deg)) / (2*sum(GCP_0_5deg)))  %>% # this tells us how many percentage of the country's national GDP is misallocated
-                    ungroup()  %>% 
-                    dplyr::select(c("iso", "year", "GDP_loss", "is_developing")) %>%
-                    distinct()
-
-        gdp_losses_developed[i] <- sum(gdp_loss_df$GDP_loss[gdp_loss_df$is_developing == 0])
-        gdp_losses_developing[i] <- sum(gdp_loss_df$GDP_loss[gdp_loss_df$is_developing == 1])
-        gdp_losses_all[i] <- sum(gdp_loss_df$GDP_loss)
-
-        # Calculate r2 for annual growth rate
-        assessment_with_preds <- assessment_with_preds %>%
+        # obtain model fit: note here we care about fit, so do not use out of bag predictions
+        analysis_fit <- analysis  %>% 
+          mutate(pred_GCP_sh_ns = predict(fit, analysis)$.pred) %>% 
+          mutate(pred_GCP_sh_ns = ifelse(floor(pop_total) == 0, 0, pred_GCP_sh_ns)) %>% 
+          group_by(iso, year) %>%
+          mutate(pred_GCP_sh = pred_GCP_sh_ns / sum(pred_GCP_sh_ns)) %>%
+          ungroup() %>%
+          mutate(pred_GCP = pred_GCP_sh * state_total_GDP) %>% 
           arrange(iso, cell_id, subcell_id, year) %>%
           group_by(iso, cell_id, subcell_id) %>%
-          mutate(prev_year_pred = ifelse(year - 1 %in% year, pred_GCP_0_5deg[match(year - 1, year)], NA),
-                prev_year_true = ifelse(year - 1 %in% year, GCP_0_5deg[match(year - 1, year)], NA)) %>%
+          mutate(prev_yr_true_gdp = ifelse(year - 1 %in% year, GCP_0_5deg[match(year - 1, year)], NA),
+                prev_yr_pred_gdp = ifelse(year - 1 %in% year, pred_GCP[match(year - 1, year)], NA),
+                prev_yr_true_gdp_sh = ifelse(year - 1 %in% year, GCP_share_0_5deg[match(year - 1, year)], NA),
+                prev_yr_pred_gdp_sh = ifelse(year - 1 %in% year, pred_GCP_sh[match(year - 1, year)], NA)) %>%
           ungroup() %>% 
-          filter(!is.na(prev_year_pred) & !is.na(prev_year_true))        
+          as.data.frame()  
 
-        developed <- assessment_with_preds %>% filter(is_developing == 0)
-        developing <- assessment_with_preds %>% filter(is_developing == 1)
+        developed_fit <- analysis_fit %>% filter(is_developing == 0)
+        developing_fit <- analysis_fit %>% filter(is_developing == 1)
 
-        chan_r2_developed[i] <- calculate_chan_r2(developed$GCP_0_5deg, developed$prev_year_true, developed$pred_GCP_0_5deg, developed$prev_year_pred)
-        chan_r2_developing[i] <- calculate_chan_r2(developing$GCP_0_5deg, developing$prev_year_true, developing$pred_GCP_0_5deg, developing$prev_year_pred)
-        chan_r2_all[i] <- calculate_chan_r2(assessment_with_preds$GCP_0_5deg, assessment_with_preds$prev_year_true, assessment_with_preds$pred_GCP_0_5deg, assessment_with_preds$prev_year_pred)
+        # When checking annual growth, exclude each ISO's first year (no prior data); note start years vary by country
+        developed_fit_ch <- developed_fit %>%
+          group_by(iso) %>%
+          filter(year != min(year)) %>%
+          ungroup()
 
-        # clear some spaces, otherwise the memory used is too large
-        rm(preds) 
-        rm(fit)
-        rm(assessment_with_preds)
-        rm(analysis)
-        rm(assessment)
-        gc()
- 
+        developing_fit_ch <- developing_fit %>% 
+          group_by(iso) %>%
+          filter(year != min(year)) %>%
+          ungroup()
+        
+        analysis_fit_ch <- analysis_fit %>% 
+          group_by(iso) %>%
+          filter(year != min(year)) %>%
+          ungroup()  
+
+        # ---------
+        # now prepare the assessment dataset for the out-of-sample performance: 
+        assessment_pred <- assessment %>% 
+          mutate(pred_GCP_sh_ns = predict(fit, assessment)$.pred) %>% 
+          mutate(pred_GCP_sh_ns = ifelse(floor(pop_total) == 0, 0, pred_GCP_sh_ns)) %>% 
+          group_by(iso, year) %>%
+          mutate(pred_GCP_sh = pred_GCP_sh_ns / sum(pred_GCP_sh_ns)) %>%
+          ungroup() %>%
+          mutate(pred_GCP = pred_GCP_sh * state_total_GDP) %>% 
+          arrange(iso, cell_id, subcell_id, year) %>%
+          group_by(iso, cell_id, subcell_id) %>%
+          mutate(prev_yr_true_gdp = ifelse(year - 1 %in% year, GCP_0_5deg[match(year - 1, year)], NA),
+                prev_yr_pred_gdp = ifelse(year - 1 %in% year, pred_GCP[match(year - 1, year)], NA),
+                prev_yr_true_gdp_sh = ifelse(year - 1 %in% year, GCP_share_0_5deg[match(year - 1, year)], NA),
+                prev_yr_pred_gdp_sh = ifelse(year - 1 %in% year, pred_GCP_sh[match(year - 1, year)], NA)) %>%
+          ungroup() %>% 
+          as.data.frame()  
+
+        developed <- assessment_pred %>% filter(is_developing == 0)
+        developing <- assessment_pred %>% filter(is_developing == 1)
+
+        # When checking annual growth, exclude each ISO's first year (no prior data); note start years vary by country
+        developed_ch <- developed %>%
+          group_by(iso) %>%
+          filter(year != min(year)) %>%
+          ungroup()
+
+        developing_ch <- developing %>% 
+          group_by(iso) %>%
+          filter(year != min(year)) %>%
+          ungroup()
+        
+        assessment_pred_ch <- assessment_pred %>% 
+          group_by(iso) %>%
+          filter(year != min(year)) %>%
+          ungroup()  
+
+        # before checking the performance, document how many data points
+        datapoint_counts[[i]] <- c(
+          developed_ch = nrow(developed_ch),
+          developing_ch = nrow(developing_ch),
+          assessment_pred_ch = nrow(assessment_pred_ch)
+        )
+
+        # check the performance
+        # ------- for the within-sample fit ------- # 
+        # metric 1: MSE for pred GDP share vs true GDP share
+        mse_GDP_sh_dped_fit[i] <- MSE_GDP_sh(developed_fit$GCP_share_0_5deg, developed_fit$pred_GCP_sh)
+        mse_GDP_sh_dping_fit[i] <- MSE_GDP_sh(developing_fit$GCP_share_0_5deg, developing_fit$pred_GCP_sh)
+        mse_GDP_sh_all_fit[i] <- MSE_GDP_sh(analysis_fit$GCP_share_0_5deg, analysis_fit$pred_GCP_sh)
+
+        # metric 2: MSE for pred log(GDP) vs true log(GDP)
+        mse_levl_dped_fit[i] <- MSE_levl(developed_fit$GCP_0_5deg, developed_fit$pred_GCP)
+        mse_levl_dping_fit[i] <- MSE_levl(developing_fit$GCP_0_5deg, developing_fit$pred_GCP)
+        mse_levl_all_fit[i] <- MSE_levl(analysis_fit$GCP_0_5deg, analysis_fit$pred_GCP)
+
+        # metric 3: MSE for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+        mse_chan_dped_fit[i] <- MSE_chan(developed_fit_ch$GCP_0_5deg, developed_fit_ch$prev_yr_true_gdp, developed_fit_ch$pred_GCP, developed_fit_ch$prev_yr_pred_gdp)
+        mse_chan_dping_fit[i] <- MSE_chan(developing_fit_ch$GCP_0_5deg, developing_fit_ch$prev_yr_true_gdp, developing_fit_ch$pred_GCP, developing_fit_ch$prev_yr_pred_gdp)
+        mse_chan_all_fit[i] <- MSE_chan(analysis_fit_ch$GCP_0_5deg, analysis_fit_ch$prev_yr_true_gdp, analysis_fit_ch$pred_GCP, analysis_fit_ch$prev_yr_pred_gdp)
+
+        # metric 4: overall R2 for pred log(GDP) vs true log(GDP)
+        o_r2_levl_dped_fit[i] <- overall_r2_levl(developed_fit$GCP_0_5deg, developed_fit$pred_GCP)
+        o_r2_levl_dping_fit[i] <- overall_r2_levl(developing_fit$GCP_0_5deg, developing_fit$pred_GCP)
+        o_r2_levl_all_fit[i] <- overall_r2_levl(analysis_fit$GCP_0_5deg, analysis_fit$pred_GCP)
+
+        # metric 5: overall R2 for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+        o_r2_chan_dped_fit[i] <- overall_r2_chan(developed_fit_ch$GCP_0_5deg, developed_fit_ch$prev_yr_true_gdp, developed_fit_ch$pred_GCP, developed_fit_ch$prev_yr_pred_gdp)
+        o_r2_chan_dping_fit[i] <- overall_r2_chan(developing_fit_ch$GCP_0_5deg, developing_fit_ch$prev_yr_true_gdp, developing_fit_ch$pred_GCP, developing_fit_ch$prev_yr_pred_gdp)
+        o_r2_chan_all_fit[i] <- overall_r2_chan(analysis_fit_ch$GCP_0_5deg, analysis_fit_ch$prev_yr_true_gdp, analysis_fit_ch$pred_GCP, analysis_fit_ch$prev_yr_pred_gdp)
+
+        # metric 6: within-country R2 for pred log(GDP) vs true log(GDP)
+        w_r2_levl_dped_fit[i] <- within_iso_r2_levl(developed_fit, GCP_0_5deg, pred_GCP)
+        w_r2_levl_dping_fit[i] <- within_iso_r2_levl(developing_fit, GCP_0_5deg, pred_GCP)
+        w_r2_levl_all_fit[i] <- within_iso_r2_levl(analysis_fit, GCP_0_5deg, pred_GCP)    
+
+        # metric 7: within-country R2 for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+        w_r2_chan_dped_fit[i] <- within_iso_r2_chan(developed_fit_ch, GCP_0_5deg, prev_yr_true_gdp, pred_GCP, prev_yr_pred_gdp)
+        w_r2_chan_dping_fit[i] <- within_iso_r2_chan(developing_fit_ch, GCP_0_5deg, prev_yr_true_gdp, pred_GCP, prev_yr_pred_gdp)
+        w_r2_chan_all_fit[i] <- within_iso_r2_chan(analysis_fit_ch, GCP_0_5deg, prev_yr_true_gdp, pred_GCP, prev_yr_pred_gdp)
+
+        # ---------------------------------------------------------------------- # 
+
+        # ------- for the out of sample cross validation predictions ------- # 
+        # metric 1: MSE for pred GDP share vs true GDP share
+        mse_GDP_sh_dped[i] <- MSE_GDP_sh(developed$GCP_share_0_5deg, developed$pred_GCP_sh)
+        mse_GDP_sh_dping[i] <- MSE_GDP_sh(developing$GCP_share_0_5deg, developing$pred_GCP_sh)
+        mse_GDP_sh_all[i] <- MSE_GDP_sh(assessment_pred$GCP_share_0_5deg, assessment_pred$pred_GCP_sh)
+
+        # metric 2: MSE for pred log(GDP) vs true log(GDP)
+        mse_levl_dped[i] <- MSE_levl(developed$GCP_0_5deg, developed$pred_GCP)
+        mse_levl_dping[i] <- MSE_levl(developing$GCP_0_5deg, developing$pred_GCP)
+        mse_levl_all[i] <- MSE_levl(assessment_pred$GCP_0_5deg, assessment_pred$pred_GCP)
+
+        # metric 3: MSE for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+        mse_chan_dped[i] <- MSE_chan(developed_ch$GCP_0_5deg, developed_ch$prev_yr_true_gdp, developed_ch$pred_GCP, developed_ch$prev_yr_pred_gdp)
+        mse_chan_dping[i] <- MSE_chan(developing_ch$GCP_0_5deg, developing_ch$prev_yr_true_gdp, developing_ch$pred_GCP, developing_ch$prev_yr_pred_gdp)
+        mse_chan_all[i] <- MSE_chan(assessment_pred_ch$GCP_0_5deg, assessment_pred_ch$prev_yr_true_gdp, assessment_pred_ch$pred_GCP, assessment_pred_ch$prev_yr_pred_gdp)
+
+        # metric 4: overall R2 for pred log(GDP) vs true log(GDP)
+        o_r2_levl_dped[i] <- overall_r2_levl(developed$GCP_0_5deg, developed$pred_GCP)
+        o_r2_levl_dping[i] <- overall_r2_levl(developing$GCP_0_5deg, developing$pred_GCP)
+        o_r2_levl_all[i] <- overall_r2_levl(assessment_pred$GCP_0_5deg, assessment_pred$pred_GCP)
+
+        # metric 5: overall R2 for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+        o_r2_chan_dped[i] <- overall_r2_chan(developed_ch$GCP_0_5deg, developed_ch$prev_yr_true_gdp, developed_ch$pred_GCP, developed_ch$prev_yr_pred_gdp)
+        o_r2_chan_dping[i] <- overall_r2_chan(developing_ch$GCP_0_5deg, developing_ch$prev_yr_true_gdp, developing_ch$pred_GCP, developing_ch$prev_yr_pred_gdp)
+        o_r2_chan_all[i] <- overall_r2_chan(assessment_pred_ch$GCP_0_5deg, assessment_pred_ch$prev_yr_true_gdp, assessment_pred_ch$pred_GCP, assessment_pred_ch$prev_yr_pred_gdp)
+
+        # metric 6: within-country R2 for pred log(GDP) vs true log(GDP)
+        w_r2_levl_dped[i] <- within_iso_r2_levl(developed, GCP_0_5deg, pred_GCP)
+        w_r2_levl_dping[i] <- within_iso_r2_levl(developing, GCP_0_5deg, pred_GCP)
+        w_r2_levl_all[i] <- within_iso_r2_levl(assessment_pred, GCP_0_5deg, pred_GCP)    
+
+        # metric 7: within-country R2 for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+        w_r2_chan_dped[i] <- within_iso_r2_chan(developed_ch, GCP_0_5deg, prev_yr_true_gdp, pred_GCP, prev_yr_pred_gdp)
+        w_r2_chan_dping[i] <- within_iso_r2_chan(developing_ch, GCP_0_5deg, prev_yr_true_gdp, pred_GCP, prev_yr_pred_gdp)
+        w_r2_chan_all[i] <- within_iso_r2_chan(assessment_pred_ch, GCP_0_5deg, prev_yr_true_gdp, pred_GCP, prev_yr_pred_gdp)
+
+        # ---------------------------------------------------------------------- # 
       }
 
-      mean_mse_developed <- mean(mse_developed)
-      mean_mse_developing <- mean(mse_developing)
-      wgt_mse <- mean_mse_developed*real_share$share[real_share$is_developing == 0] + mean_mse_developing*real_share$share[real_share$is_developing == 1]
-      mean_mse_all <- mean(mse_all)
+      metrics_df <- tibble(mtry = params$mtry, trees = params$trees, min_n = params$min_n,    
 
-      mean_r2_developed <- mean(r2_developed)
-      mean_r2_developing <- mean(r2_developing)
-      wgt_r2 <- mean_r2_developed*real_share$share[real_share$is_developing == 0] + mean_r2_developing*real_share$share[real_share$is_developing == 1]
-      mean_r2_all <- mean(r2_all)
+        mse_GDP_sh_dped_fit = mse_GDP_sh_dped_fit,
+        mse_GDP_sh_dping_fit = mse_GDP_sh_dping_fit,
+        mse_GDP_sh_all_fit = mse_GDP_sh_all_fit,
 
-      mean_gdp_loss_developed <- sum(gdp_losses_developed)/nrow(data_full %>% filter(is_developing == 0) %>% group_by(iso, year) %>% summarise(.groups = "drop"))
-      mean_gdp_loss_developing <- sum(gdp_losses_developing)/nrow(data_full %>% filter(is_developing == 1) %>% group_by(iso, year) %>% summarise(.groups = "drop"))      
-      wgt_gdp_loss <- mean_gdp_loss_developed*real_share$share[real_share$is_developing == 0] + mean_gdp_loss_developing*real_share$share[real_share$is_developing == 1]
-      mean_gdp_loss_all <- sum(gdp_losses_all)/nrow(data_full %>% group_by(iso, year) %>% summarise(.groups = "drop"))      
+        mse_levl_dped_fit = mse_levl_dped_fit,
+        mse_levl_dping_fit = mse_levl_dping_fit,
+        mse_levl_all_fit = mse_levl_all_fit,
 
-      mean_chan_r2_developed <- mean(chan_r2_developed)
-      mean_chan_r2_developing <- mean(chan_r2_developing)
-      wgt_chan_r2 <- mean_chan_r2_developed*real_share$share[real_share$is_developing == 0] + mean_chan_r2_developing*real_share$share[real_share$is_developing == 1]
-      mean_chan_r2_all <- mean(chan_r2_all)
+        mse_chan_dped_fit = mse_chan_dped_fit,
+        mse_chan_dping_fit = mse_chan_dping_fit,
+        mse_chan_all_fit = mse_chan_all_fit,
 
-      cat("MSE developed for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_mse_developed, "\n")
-      cat("MSE developing for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_mse_developing, "\n")
-      cat("MSE all wo weight for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_mse_all, "\n")
-      cat("Weighted MSE for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", wgt_mse, "\n")
+        o_r2_levl_dped_fit = o_r2_levl_dped_fit,
+        o_r2_levl_dping_fit = o_r2_levl_dping_fit,
+        o_r2_levl_all_fit = o_r2_levl_all_fit,
 
-      cat("r2 developed for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_r2_developed, "\n")
-      cat("r2 developing for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_r2_developing, "\n")
-      cat("r2 all wo weight for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_r2_all, "\n")
-      cat("Weighted r2 for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", wgt_r2, "\n")
-  
-      cat("Mean GDP Loss developed for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_gdp_loss_developed, "\n") # tell us the results 
-      cat("Mean GDP Loss developing for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_gdp_loss_developing, "\n")
-      cat("Mean GDP Loss all wo weight for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_gdp_loss_all, "\n")
-      cat("Weighted mean GDP Loss for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", wgt_gdp_loss, "\n")
+        o_r2_chan_dped_fit = o_r2_chan_dped_fit,
+        o_r2_chan_dping_fit = o_r2_chan_dping_fit,
+        o_r2_chan_all_fit = o_r2_chan_all_fit,
 
-      cat("chan r2 developed for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_chan_r2_developed, "\n")
-      cat("chan r2 developing for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_chan_r2_developing, "\n")
-      cat("chan r2 all wo weight for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", mean_chan_r2_all, "\n")
-      cat("Weighted chan r2 for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, ": ", wgt_chan_r2, "\n")
-  
-      return(data.frame(mtry = params$mtry, trees = params$trees, min_n = params$min_n, 
+        w_r2_levl_dped_fit = w_r2_levl_dped_fit,
+        w_r2_levl_dping_fit = w_r2_levl_dping_fit,
+        w_r2_levl_all_fit = w_r2_levl_all_fit,
 
-                        mean_mse_developed = mean_mse_developed,
-                        mean_mse_developing = mean_mse_developing,
-                        mean_mse_all = mean_mse_all,
-                        wgt_mse = wgt_mse,
+        w_r2_chan_dped_fit = w_r2_chan_dped_fit,
+        w_r2_chan_dping_fit = w_r2_chan_dping_fit,
+        w_r2_chan_all_fit = w_r2_chan_all_fit,
 
-                        mean_r2_developed = mean_r2_developed,
-                        mean_r2_developing = mean_r2_developing,
-                        mean_r2_all = mean_r2_all,
-                        wgt_r2 = wgt_r2,
+        mse_GDP_sh_dped = mse_GDP_sh_dped,
+        mse_GDP_sh_dping = mse_GDP_sh_dping,
+        mse_GDP_sh_all = mse_GDP_sh_all,
 
-                        mean_gdp_loss_developed = mean_gdp_loss_developed, 
-                        mean_gdp_loss_developing = mean_gdp_loss_developing, 
-                        wgt_gdp_loss = wgt_gdp_loss, 
-                        mean_gdp_loss_all = mean_gdp_loss_all,
-                        
-                        mean_chan_r2_developed = mean_chan_r2_developed,
-                        mean_chan_r2_developing = mean_chan_r2_developing,
-                        mean_chan_r2_all = mean_chan_r2_all,
-                        wgt_chan_r2 = wgt_chan_r2))
+        mse_levl_dped = mse_levl_dped,
+        mse_levl_dping = mse_levl_dping,
+        mse_levl_all = mse_levl_all,
 
+        mse_chan_dped = mse_chan_dped,
+        mse_chan_dping = mse_chan_dping,
+        mse_chan_all = mse_chan_all,
+
+        o_r2_levl_dped = o_r2_levl_dped,
+        o_r2_levl_dping = o_r2_levl_dping,
+        o_r2_levl_all = o_r2_levl_all,
+
+        o_r2_chan_dped = o_r2_chan_dped,
+        o_r2_chan_dping = o_r2_chan_dping,
+        o_r2_chan_all = o_r2_chan_all,
+
+        w_r2_levl_dped = w_r2_levl_dped,
+        w_r2_levl_dping = w_r2_levl_dping,
+        w_r2_levl_all = w_r2_levl_all,
+
+        w_r2_chan_dped = w_r2_chan_dped,
+        w_r2_chan_dping = w_r2_chan_dping,
+        w_r2_chan_all = w_r2_chan_all
+      )
+
+      write.csv(metrics_df, file = sprintf("step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/detailed_metric_0_5deg/detail_metrics_%s_%s_%s.csv", params$mtry, params$trees, params$min_n), row.names = FALSE)
+
+      # Save the data points before evaluating model performance:
+      # Since all parameter choices use the same dataset, the data points stay the same. It’s fine if they’re overwritten each time—they won’t change.
+      datapoint_counts_df <- bind_cols(
+        metric_df = names(datapoint_counts[[1]]),
+        as.data.frame(datapoint_counts) %>%
+          setNames(paste0("N_fold_", seq_along(datapoint_counts)))
+      )
+      write.csv(datapoint_counts_df, "step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/rf_metrics_fold_N_0_5deg.csv", row.names = FALSE)
+
+      # Save the variable importance scores
+      save(var_importance, file = "step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/var_imptc_score_0_5deg.RData")
+
+      # now collect the metrics for each of the five held-out samples:
+      # ------- for the within-sample fit ------- # 
+      # metric 1: MSE for pred GDP share vs true GDP share
+      m_mse_GDP_sh_dped_fit <- mean(mse_GDP_sh_dped_fit)
+      m_mse_GDP_sh_dping_fit <- mean(mse_GDP_sh_dping_fit)
+      wgtm_mse_GDP_sh_fit <- m_mse_GDP_sh_dped_fit*real_share$share[real_share$is_developing == 0] + m_mse_GDP_sh_dping_fit*real_share$share[real_share$is_developing == 1]
+      m_mse_GDP_sh_all_fit <- mean(mse_GDP_sh_all)
+
+      # metric 2: MSE for pred log(GDP) vs true log(GDP)
+      m_mse_levl_dped_fit <- mean(mse_levl_dped_fit)
+      m_mse_levl_dping_fit <- mean(mse_levl_dping_fit)
+      wgtm_mse_levl_fit <- m_mse_levl_dped_fit*real_share$share[real_share$is_developing == 0] + m_mse_levl_dping_fit*real_share$share[real_share$is_developing == 1]
+      m_mse_levl_all_fit <- mean(mse_levl_all_fit)
+
+      # metric 3: MSE for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+      m_mse_chan_dped_fit <- mean(mse_chan_dped_fit)
+      m_mse_chan_dping_fit <- mean(mse_chan_dping_fit)
+      wgtm_mse_chan_fit <- m_mse_chan_dped_fit*real_share$share[real_share$is_developing == 0] + m_mse_chan_dping_fit*real_share$share[real_share$is_developing == 1]
+      m_mse_chan_all_fit <- mean(mse_chan_all_fit)
+
+      # metric 4: overall R2 for pred log(GDP) vs true log(GDP)
+      m_or2_levl_dped_fit <- mean(o_r2_levl_dped_fit)
+      m_or2_levl_dping_fit <- mean(o_r2_levl_dping_fit)
+      wgtm_or2_levl_fit <- m_or2_levl_dped_fit*real_share$share[real_share$is_developing == 0] + m_or2_levl_dping_fit*real_share$share[real_share$is_developing == 1]
+      m_or2_levl_all_fit <- mean(o_r2_levl_all_fit)
+
+      # metric 5: overall R2 for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+      m_or2_chan_dped_fit <- mean(o_r2_chan_dped_fit)
+      m_or2_chan_dping_fit <- mean(o_r2_chan_dping_fit)
+      wgtm_or2_chan_fit <- m_or2_chan_dped_fit*real_share$share[real_share$is_developing == 0] + m_or2_chan_dping_fit*real_share$share[real_share$is_developing == 1]
+      m_or2_chan_all_fit <- mean(o_r2_chan_all_fit)
+
+      # metric 6: within-country R2 for pred log(GDP) vs true log(GDP)
+      m_wr2_levl_dped_fit <- mean(w_r2_levl_dped_fit)
+      m_wr2_levl_dping_fit <- mean(w_r2_levl_dping_fit)
+      wgtm_wr2_levl_fit <- m_wr2_levl_dped_fit*real_share$share[real_share$is_developing == 0] + m_wr2_levl_dping_fit*real_share$share[real_share$is_developing == 1]
+      m_wr2_levl_all_fit <- mean(w_r2_levl_all_fit)
+
+      # metric 7: within-country R2 for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+      m_wr2_chan_dped_fit <- mean(w_r2_chan_dped_fit)
+      m_wr2_chan_dping_fit <- mean(w_r2_chan_dping_fit)
+      wgtm_wr2_chan_fit <- m_wr2_chan_dped_fit*real_share$share[real_share$is_developing == 0] + m_wr2_chan_dping_fit*real_share$share[real_share$is_developing == 1]
+      m_wr2_chan_all_fit <- mean(w_r2_chan_all_fit)
+
+      # ---------------------------------------------------------------------- # 
+
+      # ------- for the out of sample cross validation predictions ------- # 
+      # metric 1: MSE for pred GDP share vs true GDP share
+      m_mse_GDP_sh_dped <- mean(mse_GDP_sh_dped)
+      m_mse_GDP_sh_dping <- mean(mse_GDP_sh_dping)
+      wgtm_mse_GDP_sh <- m_mse_GDP_sh_dped*real_share$share[real_share$is_developing == 0] + m_mse_GDP_sh_dping*real_share$share[real_share$is_developing == 1]
+      m_mse_GDP_sh_all <- mean(mse_GDP_sh_all)
+
+      # metric 2: MSE for pred log(GDP) vs true log(GDP)
+      m_mse_levl_dped <- mean(mse_levl_dped)
+      m_mse_levl_dping <- mean(mse_levl_dping)
+      wgtm_mse_levl <- m_mse_levl_dped*real_share$share[real_share$is_developing == 0] + m_mse_levl_dping*real_share$share[real_share$is_developing == 1]
+      m_mse_levl_all <- mean(mse_levl_all)
+
+      # metric 3: MSE for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+      m_mse_chan_dped <- mean(mse_chan_dped)
+      m_mse_chan_dping <- mean(mse_chan_dping)
+      wgtm_mse_chan <- m_mse_chan_dped*real_share$share[real_share$is_developing == 0] + m_mse_chan_dping*real_share$share[real_share$is_developing == 1]
+      m_mse_chan_all <- mean(mse_chan_all)
+
+      # metric 4: overall R2 for pred log(GDP) vs true log(GDP)
+      m_or2_levl_dped <- mean(o_r2_levl_dped)
+      m_or2_levl_dping <- mean(o_r2_levl_dping)
+      wgtm_or2_levl <- m_or2_levl_dped*real_share$share[real_share$is_developing == 0] + m_or2_levl_dping*real_share$share[real_share$is_developing == 1]
+      m_or2_levl_all <- mean(o_r2_levl_all)
+
+      # metric 5: overall R2 for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+      m_or2_chan_dped <- mean(o_r2_chan_dped)
+      m_or2_chan_dping <- mean(o_r2_chan_dping)
+      wgtm_or2_chan <- m_or2_chan_dped*real_share$share[real_share$is_developing == 0] + m_or2_chan_dping*real_share$share[real_share$is_developing == 1]
+      m_or2_chan_all <- mean(o_r2_chan_all)
+
+      # metric 6: within-country R2 for pred log(GDP) vs true log(GDP)
+      m_wr2_levl_dped <- mean(w_r2_levl_dped)
+      m_wr2_levl_dping <- mean(w_r2_levl_dping)
+      wgtm_wr2_levl <- m_wr2_levl_dped*real_share$share[real_share$is_developing == 0] + m_wr2_levl_dping*real_share$share[real_share$is_developing == 1]
+      m_wr2_levl_all <- mean(w_r2_levl_all)
+
+      # metric 7: within-country R2 for log(pred GDP_t) - log(pred GDP_t-1)  vs log(true GDP_t) - log(true GDP_t-1)
+      m_wr2_chan_dped <- mean(w_r2_chan_dped)
+      m_wr2_chan_dping <- mean(w_r2_chan_dping)
+      wgtm_wr2_chan <- m_wr2_chan_dped*real_share$share[real_share$is_developing == 0] + m_wr2_chan_dping*real_share$share[real_share$is_developing == 1]
+      m_wr2_chan_all <- mean(w_r2_chan_all)
+
+      # ---------------------------------------------------------------------- # 
+
+      results <- data.frame(mtry = params$mtry, trees = params$trees, min_n = params$min_n,   
+            m_mse_GDP_sh_dped_fit = m_mse_GDP_sh_dped_fit,
+            m_mse_GDP_sh_dping_fit = m_mse_GDP_sh_dping_fit,
+            wgtm_mse_GDP_sh_fit = wgtm_mse_GDP_sh_fit,
+            m_mse_GDP_sh_all_fit = m_mse_GDP_sh_all_fit,
+
+            m_mse_levl_dped_fit = m_mse_levl_dped_fit,
+            m_mse_levl_dping_fit = m_mse_levl_dping_fit,
+            wgtm_mse_levl_fit = wgtm_mse_levl_fit,
+            m_mse_levl_all_fit = m_mse_levl_all_fit,
+
+            m_mse_chan_dped_fit = m_mse_chan_dped_fit,
+            m_mse_chan_dping_fit = m_mse_chan_dping_fit,
+            wgtm_mse_chan_fit = wgtm_mse_chan_fit,
+            m_mse_chan_all_fit = m_mse_chan_all_fit,
+
+            m_or2_levl_dped_fit = m_or2_levl_dped_fit,
+            m_or2_levl_dping_fit = m_or2_levl_dping_fit,
+            wgtm_or2_levl_fit = wgtm_or2_levl_fit,
+            m_or2_levl_all_fit = m_or2_levl_all_fit,
+
+            m_or2_chan_dped_fit = m_or2_chan_dped_fit,
+            m_or2_chan_dping_fit = m_or2_chan_dping_fit,
+            wgtm_or2_chan_fit = wgtm_or2_chan_fit,
+            m_or2_chan_all_fit = m_or2_chan_all_fit,
+
+            m_wr2_levl_dped_fit = m_wr2_levl_dped_fit,
+            m_wr2_levl_dping_fit = m_wr2_levl_dping_fit,
+            wgtm_wr2_levl_fit = wgtm_wr2_levl_fit,
+            m_wr2_levl_all_fit = m_wr2_levl_all_fit,
+
+            m_wr2_chan_dped_fit = m_wr2_chan_dped_fit,
+            m_wr2_chan_dping_fit = m_wr2_chan_dping_fit,
+            wgtm_wr2_chan_fit = wgtm_wr2_chan_fit,
+            m_wr2_chan_all_fit = m_wr2_chan_all_fit,
+
+            m_mse_GDP_sh_dped = m_mse_GDP_sh_dped,
+            m_mse_GDP_sh_dping = m_mse_GDP_sh_dping,
+            wgtm_mse_GDP_sh = wgtm_mse_GDP_sh,
+            m_mse_GDP_sh_all = m_mse_GDP_sh_all,
+
+            m_mse_levl_dped = m_mse_levl_dped,
+            m_mse_levl_dping = m_mse_levl_dping,
+            wgtm_mse_levl = wgtm_mse_levl,
+            m_mse_levl_all = m_mse_levl_all,
+
+            m_mse_chan_dped = m_mse_chan_dped,
+            m_mse_chan_dping = m_mse_chan_dping,
+            wgtm_mse_chan = wgtm_mse_chan,
+            m_mse_chan_all = m_mse_chan_all,
+
+            m_or2_levl_dped = m_or2_levl_dped,
+            m_or2_levl_dping = m_or2_levl_dping,
+            wgtm_or2_levl = wgtm_or2_levl,
+            m_or2_levl_all = m_or2_levl_all,
+
+            m_or2_chan_dped = m_or2_chan_dped,
+            m_or2_chan_dping = m_or2_chan_dping,
+            wgtm_or2_chan = wgtm_or2_chan,
+            m_or2_chan_all = m_or2_chan_all,
+
+            m_wr2_levl_dped = m_wr2_levl_dped,
+            m_wr2_levl_dping = m_wr2_levl_dping,
+            wgtm_wr2_levl = wgtm_wr2_levl,
+            m_wr2_levl_all = m_wr2_levl_all,
+
+            m_wr2_chan_dped = m_wr2_chan_dped,
+            m_wr2_chan_dping = m_wr2_chan_dping,
+            wgtm_wr2_chan = wgtm_wr2_chan,
+            m_wr2_chan_all = m_wr2_chan_all)
+
+      cat(" --> [mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, "]\n\n")
+      cat("MSE GDP Share\n")
+      cat(" - Developed: ", m_mse_GDP_sh_dped, 
+          " | Developing: ", m_mse_GDP_sh_dping, 
+          " | All (unweighted): ", m_mse_GDP_sh_all, 
+          " | Weighted: ", wgtm_mse_GDP_sh, "\n\n")
+
+      cat("MSE (Level) log(GDP)\n")
+      cat(" - Developed: ", m_mse_levl_dped, 
+          " | Developing: ", m_mse_levl_dping, 
+          " | All (unweighted): ", m_mse_levl_all, 
+          " | Weighted: ", wgtm_mse_levl, "\n\n")
+
+      cat("MSE (Change) log(GDP)\n")
+      cat(" - Developed: ", m_mse_chan_dped, 
+          " | Developing: ", m_mse_chan_dping, 
+          " | All (unweighted): ", m_mse_chan_all, 
+          " | Weighted: ", wgtm_mse_chan, "\n\n")
+
+      cat("Overall R² (Level) log(GDP)\n")
+      cat(" - Developed: ", m_or2_levl_dped, 
+          " | Developing: ", m_or2_levl_dping, 
+          " | All (unweighted): ", m_or2_levl_all, 
+          " | Weighted: ", wgtm_or2_levl, "\n\n")
+
+      cat("Overall R² (Change) log(GDP)\n")
+      cat(" - Developed: ", m_or2_chan_dped, 
+          " | Developing: ", m_or2_chan_dping, 
+          " | All (unweighted): ", m_or2_chan_all, 
+          " | Weighted: ", wgtm_or2_chan, "\n\n")
+
+      cat("Within R² (Level) log(GDP)\n")
+      cat(" - Developed: ", m_wr2_levl_dped, 
+          " | Developing: ", m_wr2_levl_dping, 
+          " | All (unweighted): ", m_wr2_levl_all, 
+          " | Weighted: ", wgtm_wr2_levl, "\n\n")
+
+      cat("Within R² (Change) log(GDP)\n")
+      cat(" - Developed: ", m_wr2_chan_dped, 
+          " | Developing: ", m_wr2_chan_dping, 
+          " | All (unweighted): ", m_wr2_chan_all, 
+          " | Weighted: ", wgtm_wr2_chan, "\n\n")
+
+      return(results)
     }
 
-    RNGkind("L'Ecuyer-CMRG")
     set.seed(1234567)
-    results <- mclapply(1:nrow(rf_grid), mc.cores = 8, function(i) {
+    results <- mclapply(1:nrow(rf_grid), mc.cores = 10, function(i) {
+      set.seed(1234567 + i)      
       params <- rf_grid[i,]
       tune_hyperparameters(params, data_full, df.cv)
     }, mc.preschedule = TRUE)
@@ -299,38 +673,23 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
     save(tuning_results_0_5deg, file = "step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/tuning_results_0_5deg.RData")
 
     param_final <- tuning_results_0_5deg %>%
-      arrange(desc(wgt_chan_r2)) %>%
+      arrange(desc(wgtm_or2_chan)) %>%
       slice(1) # pick the hyperparameters that generate the largest r2
 
     best_model_metrics <- tuning_results_0_5deg %>%
-      arrange(desc(wgt_chan_r2)) %>%
+      arrange(desc(wgtm_or2_chan)) %>%
       slice(1) %>%  # Select the row with the best parameters
-      select(mtry, trees, min_n,
-            mean_mse_developed, mean_mse_developing, mean_mse_all, wgt_mse,
-            mean_r2_developed, mean_r2_developing, mean_r2_all, wgt_r2,
-            mean_gdp_loss_developed, mean_gdp_loss_developing, mean_gdp_loss_all, wgt_gdp_loss,
-            mean_chan_r2_developed, mean_chan_r2_developing, mean_chan_r2_all, wgt_chan_r2)
+      pivot_longer(cols = everything(), names_to = "metric", values_to = "value")
 
     write.csv(best_model_metrics, file = "step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/best_model_metrics_0_5deg.csv", row.names = FALSE)
 
-    rf_model_final <- rand_forest(mtry = param_final$mtry, trees = param_final$trees, min_n = param_final$min_n) %>%
-      set_engine("ranger", importance = "impurity", verbose = T,
-                num.threads = 20, seed = 1234567) %>%
-      set_mode("regression")
+    rf_fit <- rand_forest(mtry = param_final$mtry, trees = param_final$trees, min_n = param_final$min_n) %>%
+      set_engine("ranger", importance = "impurity", verbose = T, seed = 1234567) %>%
+      set_mode("regression") %>%
+      fit(formula, data = data_full)
 
-    rf_workflow_final <- workflow() %>% 
-      add_recipe(rf_recipe) %>% 
-      add_model(rf_model_final)
-
-    save(rf_workflow_final, file = "step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/rf_workflow_final_0_5deg.RData")
-    toc()
-  }
-  
-  tic(paste0("fitting ", name))
-  rf_fit <- fit(rf_workflow_final, data = data_full)
-  rf_fit_0_5deg <- rf_fit
-  save(rf_fit_0_5deg, file = "step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/rf_fit_0_5deg.RData")
   toc()
+  }
   
   return(rf_fit)
 }
@@ -340,8 +699,3 @@ tic("Train RF")
 rf_model9_good_grid_search_0_5deg <- train_rf(data_full = data_full)
 save(rf_model9_good_grid_search_0_5deg, file = "step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/rf_model9_good_grid_search_0_5deg.RData")
 toc()
-
-
-
-
-

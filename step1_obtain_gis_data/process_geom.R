@@ -2,7 +2,10 @@
 # This file is responsible for retrieving geometry data for subsequent processing.
 # -------------------------------------------------------------------------------- #
 
-# use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+# use R version 4.3.1 (2022-06-23)
+rm(list = ls())
+gc()
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 

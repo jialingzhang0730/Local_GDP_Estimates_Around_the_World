@@ -1,6 +1,6 @@
 # --------------------------------- Task Summary --------------------------------- #
-# This file retrieves regional GDP data for Kyrgyzstan and processes the 
-#   corresponding geometries.
+# This file retrieves regional GDP data for Kyrgyzstan for all available years
+# and processes the corresponding geometries.
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
@@ -12,9 +12,10 @@ library(readxl)
 library(units)
 library(sf)
 
+# ------------------------------------------------- #
 # Obtain GDP data: 
 
-KGZ_regional_rgdp <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KGZ/1010009 Валовой региональный продукт (ВРП) в текущих ценах..xlsx", skip = 3, n_max = 13)  %>% 
+KGZ_regional_rgdp <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/KGZ/1.01.00.09 Валовой региональный продукт (ВРП) в текущих ценах..xlsx", skip = 3, n_max = 13)  %>% 
   dplyr::select(-c("Көрсөткүчтөрдүн аталыштары", "Наименование показателей")) %>% # exclude columns about each region's non-english names 
   slice(-1:-3) %>% # we do not need the first three rows: national GDP and two blank rows
   pivot_longer(cols = matches("\\d+"), names_to = "year")  %>% 
@@ -30,11 +31,24 @@ KGZ_regional_rgdp <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/
   rename(admin_2_name = Items) %>% 
   dplyr::select(id, iso, year, min_admin_unit, starts_with("admin_2"), starts_with("admin_1"))
 
-write.csv(KGZ_regional_rgdp, "step2_obtain_gdp_data/temp/kgz_gdp_clean.csv", row.names = F)
+write.csv(KGZ_regional_rgdp, "version2_year2012_2022/step2_obtain_gdp_data/temp/kgz_gdp_clean.csv", row.names = F)
 
-# Create shapefiles -----
+# ------------------------------------------------- #
+# Create training data
 
-KGZ_regional_sf <- read_sf("step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
+training_df <- KGZ_regional_rgdp %>% 
+  mutate(parent_admin_unit = 1) %>% 
+  rename_with(starts_with("admin_1"), .fn = ~ gsub("admin_1", "parent", .x)) %>% 
+  rename_with(starts_with("admin_2"), .fn = ~ gsub("admin_2", "unit", .x)) %>% 
+  dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
+         parent_admin_unit, parent_name, matches("parent_rgdp"))
+
+write.csv(training_df, "version2_year2012_2022/step2_obtain_gdp_data/temp/kgz_training_data.csv", row.names = F)
+
+# ------------------------------------------------- #
+# Create shapefiles
+
+KGZ_regional_sf <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
   filter(GID_0 == "KGZ") %>%
   rename(name = NAME_1, iso = GID_0)  %>% 
   mutate(name = case_when(name == "Batken" ~ "Batken oblast",
@@ -51,17 +65,6 @@ KGZ_regional_sf <- read_sf("step1_obtain_gis_data/outputs/gdam_prov_level1_witho
   mutate(id = paste0(name, "_", iso)) %>% 
   dplyr::select(id, iso, geom) 
 
-KGZ_national_sf <- KGZ_regional_sf %>% 
-  mutate(name = "Kyrgyzstan") %>% 
-  group_by(name, iso) %>% 
-  summarize(geom = st_union(geom), admin_unit = 1, .groups = "drop")
+st_write(KGZ_regional_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/kgz_admin_2.gpkg", append = F)
 
-training_df <- KGZ_regional_rgdp %>% 
-  mutate(parent_admin_unit = 1) %>% 
-  rename_with(starts_with("admin_1"), .fn = ~ gsub("admin_1", "parent", .x)) %>% 
-  rename_with(starts_with("admin_2"), .fn = ~ gsub("admin_2", "unit", .x)) %>% 
-  dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
-         parent_admin_unit, parent_name, matches("parent_rgdp"))
-
-st_write(KGZ_regional_sf, "step2_obtain_gdp_data/temp/kgz_admin_2.gpkg", append = F)
-write.csv(training_df, "step2_obtain_gdp_data/temp/kgz_training_data.csv", row.names = F)
+# eof ----

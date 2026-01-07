@@ -1,11 +1,14 @@
 # --------------------------------- Task Summary --------------------------------- #
 # This file retrieves regional GDP data from the OECD Regional Economy database.
 # Data for the years 2012-2020 were downloaded from the OECD iLibrary.
-# Data for the year 2021 was downloaded from the new platform, OECD Data Explorer, on June 8, 2024. 
+# Data for the years 2021 and 2022 was downloaded from the new platform, OECD Data Explorer, on Sept 15, 2024. 
 #   Please note that the data may be updated after this date, so exercise caution when referencing this dataset.
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+rm(list = ls())
+gc()
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -29,109 +32,129 @@ library(XML)
 library(data.table)
 library(qgisprocess)
 
+# ------------------------------------------------- #
 # Obtain GDP data in current national price: year 2012 - 2020
 
 # Read GDP data
 oecd_data <- fread("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/REGION_ECONOM-2023-1-EN-20240216T100059 2.csv")  %>% 
-    filter(Indicator == "Regional GDP")  %>% 
-    filter(SERIES == "SNA_2008")   %>% 
-    filter(Year >= 2012, Year <= 2020)  %>% 
-    filter(Measure == "      Millions National currency, current prices")  %>% 
-    filter(POS == "ALL")  %>% 
-    filter(TL %in% c(1,2,3))  %>% 
-    dplyr::select(c("TL", "REG_ID", "Region", "TIME", "Value"))  %>% 
-    rename(id = REG_ID, rgdp_total = Value, admin_unit = TL, name = Region)  %>% 
-    pivot_longer(cols = starts_with("rgdp_"), names_to = "sector")  %>% 
-    pivot_wider(names_from = "TIME") %>% 
-    pivot_longer(cols = matches("\\d{4}"), names_to = "year",
-                names_transform = list(year = as.numeric)) %>%
-    pivot_wider(names_from = "sector")  %>% 
-    mutate(name = gsub(" $", "", name))
+  filter(Indicator == "Regional GDP")  %>% 
+  filter(SERIES == "SNA_2008")   %>% 
+  filter(Year >= 2012, Year <= 2020)  %>% 
+  filter(Measure == "      Millions National currency, current prices")  %>% 
+  filter(POS == "ALL")  %>% 
+  filter(TL %in% c(1,2,3))  %>% 
+  dplyr::select(c("TL", "REG_ID", "Region", "TIME", "Value"))  %>% 
+  rename(id = REG_ID, rgdp_total = Value, admin_unit = TL, name = Region)  %>% 
+  pivot_longer(cols = starts_with("rgdp_"), names_to = "sector")  %>% 
+  pivot_wider(names_from = "TIME") %>% 
+  pivot_longer(cols = matches("\\d{4}"), names_to = "year",
+               names_transform = list(year = as.numeric)) %>%
+  pivot_wider(names_from = "sector")  %>% 
+  mutate(name = gsub(" $", "", name))
 
 # Get data structure: 
-oced_stru <- read_xlsx("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD Territorial correspondence - November 2023.xlsx", sheet = "List of regions - 2023", range = "A3:Q3652")  %>% 
-    filter(`Classification (latest : TL-2021)` == "TL-2021")  %>% 
-    dplyr::select(c("REG_ID", "Regional name (eng)", "Hierarchical relations"))  %>% 
-    rename(id = REG_ID, name = `Regional name (eng)`, parent_id = `Hierarchical relations`)
-    
-stru_more <- oced_stru  %>% 
-    left_join(rename(oced_stru, grandparent_id = parent_id, parent_name = name),
-            by = c("parent_id" = "id"))  %>% 
-    left_join((dplyr::select(oced_stru, -parent_id) %>% 
-                rename(grandparent_name = name)),
-                by = c("grandparent_id" = "id"))  %>% 
-    mutate(iso = case_when(is.na(parent_id) & is.na(grandparent_id) ~ id,
-                            !is.na(parent_id) & is.na(grandparent_id) ~ parent_id,
-                            !is.na(parent_id) & !is.na(grandparent_id) ~ grandparent_id))  %>% 
-    mutate(iso = case_when(iso == "NOMC" & is.na(grandparent_id) ~ id,
-                            iso == "NOMC" & !is.na(grandparent_id) ~ parent_id,
-                            T ~ iso)) %>% 
-    mutate(iso = ifelse(iso == "NOMC", id, iso))  %>% 
-    dplyr::select(-c(name))
+oced_stru <- read_xlsx("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD Territorial correspondence - TL2021.xlsx", sheet = "List of regions - TL2021", range = "A3:Q3652")  %>% 
+  filter(`Classification (latest : TL2021)` == "TL2021")  %>% 
+  dplyr::select(c("REG_ID", "Regional name (eng)", "Hierarchical relations"))  %>% 
+  rename(id = REG_ID, name = `Regional name (eng)`, parent_id = `Hierarchical relations`)
 
-# organize GDP data:
-# for CHN, IND and USA: data will be sourced directly from their respective official statistical agencies
+stru_more <- oced_stru  %>% 
+  left_join(rename(oced_stru, grandparent_id = parent_id, parent_name = name),
+            by = c("parent_id" = "id"))  %>% 
+  left_join((dplyr::select(oced_stru, -parent_id) %>% 
+               rename(grandparent_name = name)),
+            by = c("grandparent_id" = "id"))  %>% 
+  mutate(iso = case_when(is.na(parent_id) & is.na(grandparent_id) ~ id,
+                         !is.na(parent_id) & is.na(grandparent_id) ~ parent_id,
+                         !is.na(parent_id) & !is.na(grandparent_id) ~ grandparent_id))  %>% 
+  mutate(iso = case_when(iso == "NOMC" & is.na(grandparent_id) ~ id,
+                         iso == "NOMC" & !is.na(grandparent_id) ~ parent_id,
+                         T ~ iso)) %>% 
+  mutate(iso = ifelse(iso == "NOMC", id, iso))  %>% 
+  dplyr::select(-c(name))
+
+# organize GDP data: note the country dropped and year dropped for specific countries!!!!
+#   for CHN, IND and USA: we will collect from their official statistical agency
 exclude_from_oecd <- c("ZAF", "IRL", "ISR", "CHN", "IND", "ISL", "USA", "LUX", "MLT")
 
-# The second-level regional GDP data for Japan (JPN) in 2019 is missing and will be inferred by summing the third-level data.
+# JPN 2019 second level data are missing, we can filfill it by summing the third level data
 JPN_2019 <- oecd_data  %>% 
-    left_join(stru_more)  %>%
-    filter(iso == "JPN", year == 2019)  %>% 
-    filter(!parent_id == "JPN")  %>% 
-    group_by(parent_id, year)  %>% 
-    mutate(sum_gdp = sum(rgdp_total))  %>% 
-    ungroup()  %>% 
-    distinct(year, parent_id, sum_gdp)  %>% 
-    as.data.frame()  %>% 
-    rename(id = parent_id)
+  left_join(stru_more)  %>%
+  filter(iso == "JPN", year == 2019)  %>% 
+  filter(!parent_id == "JPN")  %>% 
+  group_by(parent_id, year)  %>% 
+  mutate(sum_gdp = sum(rgdp_total))  %>% 
+  ungroup()  %>% 
+  distinct(year, parent_id, sum_gdp)  %>% 
+  as.data.frame()  %>% 
+  rename(id = parent_id)
 
-# now organize the downloaded data
+# obtain oecd year 2020's data for Japan
+oecd_2020_jp <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD.CFE.EDS,DSD_REG_ECO@DF_GDP,2.0,complete,2025-09-22 17-19-42.csv")  %>% 
+  dplyr::select(c(TERRITORIAL_LEVEL, REF_AREA, Reference.area, Measure, Price.base, Unit.of.measure, TIME_PERIOD, OBS_VALUE, COUNTRY, Observation.status))  %>% 
+  filter(Measure == "Gross domestic product",
+         Price.base == "Current prices",
+         Unit.of.measure == "National currency",
+         TIME_PERIOD == 2020,
+         grepl("^JP", REF_AREA))  %>% 
+  mutate(TERRITORIAL_LEVEL = ifelse(TERRITORIAL_LEVEL == "CTRY", "TL1", TERRITORIAL_LEVEL),
+         TERRITORIAL_LEVEL = as.numeric(gsub("TL", "", TERRITORIAL_LEVEL)))  %>% 
+  rename(admin_unit = TERRITORIAL_LEVEL,
+         id = REF_AREA,
+         name = Reference.area,
+         year = TIME_PERIOD,
+         rgdp_total = OBS_VALUE)  %>% 
+  mutate(admin_unit = as.character(admin_unit))  %>% 
+  dplyr::select(c(admin_unit, id, name, year, rgdp_total))
+
+# Then in your main code:
 oecd_2012_2020_pre <- oecd_data  %>% 
-    left_join(stru_more)  %>% 
-    arrange(iso, admin_unit, parent_id, id)  %>% 
-    filter(!iso %in% exclude_from_oecd)  %>% # drop countries that have too many missing years
-    filter(!id %in% exclude_from_oecd)  %>%  # drop countries that have too many missing years
-    filter(!(iso == "RUS" & year == 2020)) %>% # Russia's year 2020 data are missing
-    filter(!(id == "RUS" & year == 2020))  %>% # Russia's year 2020 data are missing
-    filter(!(iso == "JPN" & year == 2020)) %>% # Japan's year 2020 data are missing
-    mutate(rgdp_total = ifelse(id == "NO0B1", 0, rgdp_total)) %>% # change the NO0B1's NA value into 0, which is true
-    left_join(JPN_2019)  %>% # fulfill JPN's 2019 second level data
-    mutate(rgdp_total = ifelse(year == 2019 & id %in% JPN_2019$id, sum_gdp, rgdp_total))  %>% # change the NA to what we calculated through summing third level data
-    dplyr::select(-c(sum_gdp))  %>% 
-    mutate(across(.cols = c("year", "rgdp_total"),
-                    .fns = ~ as.numeric(.x))) %>% 
-    filter(!str_detect(name, "not regionalised|unregionalised")) %>% # remove those gdp that are not regionalized
-    filter(!id %in% c("EU27_2020")) # we do not need this
+  left_join(stru_more)  %>% 
+  arrange(iso, admin_unit, parent_id, id)  %>% 
+  filter(!iso %in% exclude_from_oecd)  %>% # drop countries that have too many missing years
+  filter(!id %in% exclude_from_oecd)  %>%  # drop countries that have too many missing years
+  filter(!(iso == "RUS" & year == 2020)) %>% # Russia's year 2020 data are missing
+  filter(!(id == "RUS" & year == 2020))  %>% # Russia's year 2020 data are missing
+  filter(!(iso == "JPN" & year == 2020)) %>% # Japan's year 2020 data are missing
+  mutate(rgdp_total = ifelse(id == "NO0B1", 0, rgdp_total)) %>% # change the NO0B1's NA value into 0, which is true
+  left_join(JPN_2019)  %>% # fulfill JPN's 2019 second level data
+  mutate(rgdp_total = ifelse(year == 2019 & id %in% JPN_2019$id, sum_gdp, rgdp_total))  %>% # change the NA to what we calculated through summing third level data
+  dplyr::select(-c(sum_gdp))  %>% 
+  mutate(across(.cols = c("year", "rgdp_total"),
+                .fns = ~ as.numeric(.x))) %>% 
+  filter(!str_detect(name, "not regionalised|unregionalised")) %>% # remove those gdp that are not regionalized, we ignore this
+  filter(!id %in% c("EU27_2020")) %>%
+  bind_rows(oecd_2020_jp %>%
+              left_join(stru_more, by = "id"))  # This one already has 'by' specified
 
 # now we need to drop some redundant data: 
 #   for example: EE00 is just country level data, but the sample aready has EST as country level data
 #                AT130 repeats with AT13
-#                ...
 oecd_2012_2020 <- oecd_2012_2020_pre  %>% 
-    group_by(iso, year) %>% 
-    mutate(admin_levels = length(unique(admin_unit)),
-          TL_2_length = sum(admin_unit == 2)) %>% 
-    ungroup()  %>% 
-    filter(!(admin_unit == 2 & TL_2_length == 1)) %>% # This process removes TL2-level data that duplicates TL1-level data.
-    mutate(admin_unit = ifelse(TL_2_length == 1 & admin_unit == 3, 2, admin_unit)) %>% # After removing the TL2 data for certain countries, the TL3 data should be reclassified as TL2.
-    group_by(iso, year, parent_id) %>% 
-    mutate(sub_units = n()) %>% 
-    ungroup()  %>% 
-    mutate(redundant_admin = sub_units == 1 & admin_unit == 3) %>% # This process identifies TL3-level data that duplicates TL2-level data.
-    mutate(redundant_admin = ifelse(redundant_admin, parent_id, NA)) %>% # Identify the parent id of the repetitive TL3-level data.
-    mutate(drop = id %in% setdiff(unique(redundant_admin), NA))  %>% # We aim to remove the repeated TL2-level data, and keep TL3-level information.
-    filter(!drop) %>% # drop it
-    mutate(parent_id = ifelse(!is.na(redundant_admin), grandparent_id, parent_id),
-           parent_name = ifelse(!is.na(redundant_admin), grandparent_name, parent_name))  %>% # Update the parent_id and parent_name for the TL3-level data, assigning the parent as the country rather than TL2.
-    group_by(iso) %>% 
-    mutate(recode = !2 %in% admin_unit) %>% # Identify the entries that do not have a corresponding TL2 level within the current group.
-    ungroup()  %>% 
-    mutate(admin_unit = ifelse(recode & admin_unit == 3, 2, admin_unit)) %>%  # For entries without TL2 but with TL3, reclassify the TL3 data as TL2.
-    mutate(parent_id = ifelse(admin_unit == 3 & parent_id == iso, NA, parent_id)) %>% # Set the parent_id of the TL3-level data that duplicates TL2 information to NA, as their parent id have been removed.
-    dplyr::select(-c(admin_levels, TL_2_length, recode, redundant_admin, sub_units, drop, grandparent_id, grandparent_name))
+  group_by(iso, year) %>% 
+  mutate(admin_levels = length(unique(admin_unit)),
+         TL_2_length = sum(admin_unit == 2)) %>% 
+  ungroup()  %>% 
+  filter(!(admin_unit == 2 & TL_2_length == 1)) %>% # by doing this, we remove those TL2 level data who actually just repetes TL1 level information
+  mutate(admin_unit = ifelse(TL_2_length == 1 & admin_unit == 3, 2, admin_unit)) %>% # after above line, TL2 for certain countries are removed, we have to change TL3 into TL2
+  group_by(iso, year, parent_id) %>% 
+  mutate(sub_units = n()) %>% 
+  ungroup()  %>% 
+  mutate(redundant_admin = sub_units == 1 & admin_unit == 3) %>% # by doing this, we find those TL3 level data who actually just repetes TL2 level information
+  mutate(redundant_admin = ifelse(redundant_admin, parent_id, NA)) %>% # find out those repeative TL3 level data's parent id
+  mutate(drop = id %in% setdiff(unique(redundant_admin), NA))  %>% # we want to remove those repeated TL2 level data because we need TL3 level information
+  filter(!drop) %>% # drop it
+  mutate(parent_id = ifelse(!is.na(redundant_admin), grandparent_id, parent_id),
+         parent_name = ifelse(!is.na(redundant_admin), grandparent_name, parent_name))  %>% # change those TL3 level data's parent_id and parent_name, their parents should be country, not TL2
+  group_by(iso) %>% 
+  mutate(recode = !2 %in% admin_unit) %>% # find out those who do not have TL2 in the current group
+  ungroup()  %>% 
+  mutate(admin_unit = ifelse(recode & admin_unit == 3, 2, admin_unit)) %>%  # for those who do not have TL2 but have TL3, make TL3 as TL2
+  mutate(parent_id = ifelse(admin_unit == 3 & parent_id == iso, NA, parent_id)) %>% # well... change the parent_id of those TL3 level data who repetes TL2 information to NA, because their parent_id are dropped
+  dplyr::select(-c(admin_levels, TL_2_length, recode, redundant_admin, sub_units, drop, grandparent_id, grandparent_name))
 
 # obtain oecd year 2021's data
-oecd_2021 <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD.CFE.EDS,DSD_REG_ECO@DF_GDP,2.0+all.csv")  %>% 
+oecd_2021 <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD.CFE.EDS,DSD_REG_ECO@DF_GDP,2.0,complete,2025-09-22 17-19-42.csv")  %>% 
   dplyr::select(c(TERRITORIAL_LEVEL, REF_AREA, Reference.area, Measure, Price.base, Unit.of.measure, TIME_PERIOD, OBS_VALUE, COUNTRY,Observation.status))  %>% 
   filter(Measure == "Gross domestic product",
          Price.base == "Current prices",
@@ -148,14 +171,63 @@ oecd_2021 <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD.
   filter(id %in% oecd_2012_2020$id)  %>% 
   mutate(admin_unit = ifelse(substr(id,1,3) == "NZ0", 2, admin_unit)) # change NZL's subnational regions' admin_unit to 2 to merge with "oecd_2012_2020"'s data, currently, it is 3
 
-# merge them: be careful if the definition of id changes
-#   Verify by checking the "OECD Territorial Correspondence" for confirmation.
+oecd_2022 <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/oecd/OECD.CFE.EDS,DSD_REG_ECO@DF_GDP,2.0,complete,2025-09-22 17-19-42.csv") %>% 
+  dplyr::select(TERRITORIAL_LEVEL, REF_AREA, Reference.area, Measure, Price.base, Unit.of.measure, TIME_PERIOD, OBS_VALUE, COUNTRY, Observation.status) %>% 
+  filter(Measure == "Gross domestic product",
+         Price.base == "Current prices",
+         Unit.of.measure == "National currency",
+         TIME_PERIOD == 2022) %>% 
+  mutate(TERRITORIAL_LEVEL = ifelse(TERRITORIAL_LEVEL == "CTRY", "TL1", TERRITORIAL_LEVEL),
+         TERRITORIAL_LEVEL = as.numeric(gsub("TL", "", TERRITORIAL_LEVEL))) %>% 
+  rename(admin_unit = TERRITORIAL_LEVEL,
+         id = REF_AREA,
+         name = Reference.area,
+         year = TIME_PERIOD,
+         rgdp_total = OBS_VALUE) %>% 
+  mutate(id = dplyr::recode(id,
+                            # Germany (Thuringia / DEG…)
+                            "DEG0S" = "DEG04",  # Suhl
+                            "DEG0Q" = "DEG0B",  # Schmalkalden-Meiningen
+                            "DEG0R" = "DEG0P",  # Wartburgkreis
+                            "DEG0V" = "DEG0H",  # Sonneberg
+                            "DEG0U" = "DEG0I",  # Saalfeld-Rudolstadt
+                            "DEG0T" = "DEG0F",  # Ilm-Kreis (note: old was DEG0F)
+                            # Finland (NUTS 2021 -> 2024)
+                            "FI198" = "FI193",  # Central Finland
+                            "FI199" = "FI194",  # South Ostrobothnia
+                            "FI19A" = "FI195",  # Ostrobothnia
+                            "FI19B" = "FI197",  # Pirkanmaa
+                            "FI1C6" = "FI1C3",  # Päijät-Häme
+                            "FI1C7" = "FI1C4",  # Kymenlaakso
+                            "FI1DA" = "FI1D1",  # South Savonia
+                            "FI1DB" = "FI1D2",  # North Savonia
+                            "FI1DC" = "FI1D3"   # North Karelia
+  )) %>% 
+  dplyr::select(admin_unit, id, year, rgdp_total) %>% 
+  filter(id %in% oecd_2012_2020$id) %>% 
+  mutate(admin_unit = ifelse(substr(id,1,3) == "NZ0", 2, admin_unit))
+
+# merge them: be careful if the definition of id changes from old to new dataset!!!!!!
+#   You can check their "OECD Territorial correspondence" to check 
 oecd_regional_rgdp <- oecd_2012_2020  %>% 
   distinct(admin_unit, name, id, parent_id, parent_name, iso, .keep_all = FALSE)  %>% 
-  mutate(year = 2021)  %>% 
-  left_join(oecd_2021 %>% mutate(admin_unit = as.character(admin_unit)))  %>%  
-  mutate(rgdp_total = ifelse(id == "NO0B1" & year == 2021, 0, rgdp_total))  %>% # The value for "NO0B1" is missing; however, this is acceptable as the GDP for this location is 0
-  filter(!iso %in% c("BGR", "BRA", "EST", "HRV", "IDN", "JPN", "LVA", "PER", "ROU", "RUS")) %>% # The 2021 data for these countries is missing at the time of data download.
+  # Create rows for both 2021 and 2022
+  expand_grid(year = c(2021, 2022)) %>%
+  # Join 2021 data
+  left_join(oecd_2021 %>% mutate(admin_unit = as.character(admin_unit)), 
+            by = c("admin_unit", "id", "year")) %>%
+  # Join 2022 data
+  left_join(oecd_2022 %>% mutate(admin_unit = as.character(admin_unit)), 
+            by = c("admin_unit", "id", "year")) %>%
+  # Combine rgdp_total from both sources
+  mutate(rgdp_total = coalesce(rgdp_total.x, rgdp_total.y)) %>%
+  dplyr::select(-rgdp_total.x, -rgdp_total.y) %>%
+  # Handle NO0B1 special case for both years
+  mutate(rgdp_total = ifelse(id == "NO0B1" & year %in% c(2021, 2022), 0, rgdp_total)) %>%
+  # Filter out countries with missing data (check if this list changed for 2022)
+  filter(!(iso %in% c("BGR", "HRV", "IDN", "PER", "ROU") & year == 2021)) %>%
+  filter(!(iso %in% c("BRA", "RUS","CHN","IND", "MLT", "ZAF") & year == 2021)) %>% # These will be added manually
+  filter(!(iso %in% c("BGR", "HRV", "IDN", "JPN", "PER", "ROU", "BRA", "RUS", "CHN", "IND", "MLT", "ZAF", "NOR") & year == 2022)) %>% # Update this list
   bind_rows(oecd_2012_2020)
 
 # obtain TL1 data
@@ -168,7 +240,8 @@ oecd_1 <- filter(oecd_regional_rgdp, admin_unit == 1) %>%
 # obtain TL2 data
 oecd_2 <- filter(oecd_regional_rgdp, admin_unit == 2) %>% 
   dplyr::select(-c(parent_id, parent_name)) %>% 
-  pivot_wider(names_from = admin_unit, 
+  pivot_wider(id_cols = c(id, iso, year),  # ADD THIS LINE
+              names_from = admin_unit, 
               values_from = c("name", starts_with("rgdp")),
               names_glue = "admin_{admin_unit}_{.value}") %>% 
   rename(admin_2_id = id)
@@ -177,7 +250,8 @@ oecd_2 <- filter(oecd_regional_rgdp, admin_unit == 2) %>%
 oecd_regional_data_clean_pre <- filter(oecd_regional_rgdp, admin_unit == 3) %>% 
   rename(admin_2_id = parent_id, admin_3_id = id) %>% 
   dplyr::select(-parent_name) %>% 
-  pivot_wider(names_from = admin_unit, 
+  pivot_wider(id_cols = c(admin_3_id, admin_2_id, iso, year),  # ADD THIS LINE
+              names_from = admin_unit, 
               values_from = c("name", starts_with("rgdp")),
               names_glue = "admin_{admin_unit}_{.value}") %>% 
   left_join(oecd_2) %>% 
@@ -186,20 +260,22 @@ oecd_regional_data_clean_pre <- filter(oecd_regional_rgdp, admin_unit == 3) %>%
   mutate(across(matches("rgdp"),
                 .fns = ~ as.numeric(.x))) %>% 
   dplyr::select(year, iso, starts_with("admin_3"), starts_with("admin_2"), 
-         starts_with("admin_1")) %>% 
+                starts_with("admin_1")) %>% 
   arrange(iso, admin_2_id, admin_3_id, year)
 
 # fulfill the data
 RUS_2020 <- read.csv("step2_obtain_gdp_data/temp/RUS_2020_2021.csv") # see "1_RUS.R" file for the data
 BRA_2021 <- read.csv("step2_obtain_gdp_data/temp/BRA_2021.csv") # see "2_BRA.R" file for the data
+RUS_2022 <- read.csv("step2_obtain_gdp_data/temp/RUS_2022.csv") 
+BRA_2022 <- read.csv("step2_obtain_gdp_data/temp/BRA_2022.csv")
 
-# bind RUS_2020 and BRA_2021, but note the following geometry changes:
+# bind RUS_2020 and BRA_2021, but note the following geometry "mistakes" that OECD makes !!!!!!!!!!
 # When you update, please go to official statistical agency website to check whether OECD corrects this
 #   1. For New Zealand, GDP of "Hawke's Bay Region" is included in "Gisborne";
 #                       GDP of "West Coast Region" is included in "Tasman-Nelson-Marlborough"
 #                       Canterbury includes Chatham Islands.
-#   2. For Chile, Nuble region (CLO16) is included in the Bio-Bio region (CL08)
-#   3. For Indonesia, OECD excludes the region "North Kalimantan Province", we can obatin its gdp by using national GDP - other regions total GDP
+#   2. For Chile, Nuble region (CLO16) is not included because this region appears since 2018, which was included in the Bio-Bio region (CL08)
+#   3. For Indonesia, OECD misses one region "North Kalimantan Province", we can obatin its gdp by using national GDP - other regions total GDP
 # Don't forget to change the geometries below
 
 idn_north_kalim <- oecd_regional_data_clean_pre  %>% 
@@ -217,11 +293,17 @@ idn_north_kalim <- oecd_regional_data_clean_pre  %>%
             admin_1_rgdp_total = first(admin_1_rgdp_total))  %>% 
   ungroup()
 
-oecd_regional_data_clean <- bind_rows(oecd_regional_data_clean_pre, RUS_2020, BRA_2021, idn_north_kalim)  %>% 
-  mutate(admin_2_name = ifelse(admin_2_name == "Biobío (Región)", "Biobío (Región) + Ñuble", admin_2_name))  %>% 
-  mutate(admin_2_name = ifelse(admin_2_name == "Gisborne", "Gisborne + Hawke's Bay", admin_2_name))  %>% 
+oecd_regional_data_clean <- bind_rows(
+    oecd_regional_data_clean_pre, 
+    RUS_2020, 
+    BRA_2021,
+    RUS_2022,  # Add 2022 data
+    BRA_2022,  # Add 2022 data
+    idn_north_kalim
+  ) %>% 
+  mutate(admin_2_name = ifelse(admin_2_name == "Biobío (Región)", "Biobío (Región) + Ñuble", admin_2_name)) %>% 
+  mutate(admin_2_name = ifelse(admin_2_name == "Gisborne", "Gisborne + Hawke's Bay", admin_2_name)) %>% 
   mutate(admin_2_name = ifelse(admin_2_name == "Tasman-Nelson-Marlborough", "Tasman-Nelson-Marlborough + West Coast", admin_2_name))
-
 write.csv(oecd_regional_data_clean, "step2_obtain_gdp_data/temp/oecd_gdp_clean.csv", row.names = F)
 
 # obtain training df
@@ -241,7 +323,7 @@ training_df <- oecd_regional_data_clean %>%
   drop_na(parent_name) %>% 
   # mutate(training = !is.na(unit_rgdp_total)) %>% 
   dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
-         parent_admin_unit, parent_id, parent_name, matches("parent_rgdp")) %>% 
+                parent_admin_unit, parent_id, parent_name, matches("parent_rgdp")) %>% 
   mutate(parent_id = ifelse(parent_admin_unit == 1, iso, parent_id)) %>% 
   group_by(year, iso, parent_admin_unit, parent_id, parent_name) %>% 
   mutate(sub_regions = sum(!is.na(unit_rgdp_total))) %>% 
@@ -274,18 +356,26 @@ nuts_sf_pre <- lapply(c("0", "1", "2", "3"), function(admin_level){
   dplyr::select(id, iso, geometry) %>% 
   rename(geom = geometry)
 
-st_write(nuts_sf_pre, "step2_obtain_gdp_data/temp/nuts_sf_pre.gpkg", append = F)
+st_write(nuts_sf_pre, "version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf_pre.gpkg", append = F)
 
-# remove large inland waters
+# --------------------- Important !!! ---------------------------- #
+# large waters are not excluded from nuts regions, so do it in QGIS as described below:
+#   1. Drag "temp/nuts_sf_pre.gpkg" and “Global Lakes and Wetlands Database: Large Lake Polygons (Level 1)” file "glwd_1.shp" into QGIS
+#   2. "glwd_1.shp" file has invalid geometry, so use “Processing/Toolbox/Vector geom- etry/Fix geometries” to fix it. 
+#       Choose “Linework” (default) for “Repair method”. There will be a file named “Fixed geometries” automatically generated.
+#   3. Click “Vector/ Geoprocessing Tools/ Difference” to exclude waters. Input layer is the "temp/nuts_sf_pre.gpkg" file, and overlay layer is the “Fixed geometries” obtained in step2.
+#   4. obtain files "temp/nuts_sf.gpkg", choose "CRS" as: "EPSG:4326 - WGS 84"
+# --------------------- Important !!! ---------------------------- #
+
 difference <- qgis_run_algorithm(
   alg = "native:difference",
-  INPUT = "step2_obtain_gdp_data/temp/nuts_sf_pre.gpkg", 
-  OVERLAY = "step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
-  OUTPUT = "step2_obtain_gdp_data/temp/nuts_sf.gpkg", 
+  INPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf_pre.gpkg", 
+  OVERLAY = "version2_year2012_2022/step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
+  OUTPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf.gpkg", 
   .quiet = FALSE
 )
 
-nuts_sf <- read_sf("step2_obtain_gdp_data/temp/nuts_sf.gpkg")
+nuts_sf <- read_sf("version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf.gpkg")
 
 ## Non-NUTS data -----
 non_nuts_regions <- filter(training_df, !id %in% nuts_sf$id) %>% 
@@ -301,8 +391,8 @@ non_nuts_countries <- non_nuts_regions %>%
 #   1. For New Zealand, GDP of "Hawke's Bay Region" is included in "Gisborne";
 #                       GDP of "West Coast Region" is included in "Tasman-Nelson-Marlborough"
 #                       Canterbury includes Chatham Islands.
-#   2. For Chile, Nuble region (CLO16) is included in the Bio-Bio region (CL08)
-nzl <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
+#   2. For Chile, Nuble region (CLO16) is not included because this region appears since 2018, which was included in the Bio-Bio region (CL08)
+nzl <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
   filter(shapeGroup == "NZL") %>% 
   rename(name = shapeName, iso = shapeGroup) %>% 
   mutate(name = ifelse(iso == "NZL", gsub(" Region$", "", name), name))  %>% 
@@ -314,7 +404,7 @@ nzl <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpk
   summarize(geom = st_union(geom), .groups = "drop") %>% 
   rename(name = region) 
 
-chl <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
+chl <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
   filter(shapeGroup == "CHL") %>% 
   rename(name = shapeName, iso = shapeGroup)  %>% 
   mutate(name = iconv(name, from = "UTF-8", to = "LATIN1"))  %>% 
@@ -324,7 +414,7 @@ chl <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpk
   summarize(geom = st_union(geom), .groups = "drop") %>% 
   rename(name = region) 
 
-non_nuts_base_regions <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
+non_nuts_base_regions <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
   filter(shapeGroup %in% (pull(non_nuts_countries, iso) %>% setdiff(c("NZL", "CHL")))) %>% 
   rename(name = shapeName, iso = shapeGroup)  %>% 
   mutate(name = ifelse(iso == "IDN", paste0(name, " Province"), name)) %>% 
@@ -333,104 +423,104 @@ non_nuts_base_regions <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_withou
   bind_rows(nzl, chl)  %>% 
   filter(!(iso == "AUS"& name == "Other Territories"))  %>% 
   mutate(name = case_when(# KOR
-                          name == "Gyeonggi" ~ "Gyeonggi-do",
-                          name == "South Gyeongsang" ~ "Gyeongsangnam-do",
-                          name == "North Gyeongsang" ~ "Gyeongsangbuk-do",
-                          name == "North Jeolla" ~ "Jeollabuk-do",
-                          name == "South Jeolla" ~ "Jeollanam-do",
-                          name == "North Chungcheong" ~ "Chungcheongbuk-do",
-                          name == "South Chungcheong" ~ "Chungcheongnam-do",
-                          name == "Gangwon" ~ "Gangwon-do",
-                          name == "Jeju" ~ "Jeju-do",
-                          # AUS
-                          name == "Australian Capital Territory" ~ "Canberra region (ACT)",
-                          name == "Archipiélago de San Andrés, Providencia y Santa Catalina" ~ "San Andrés",
-                          name == "Bogota Capital District" ~ "Bogotá Capital District",
-                          name == "Córdoba" ~ "Córdoba (CO)",
-                          # BRA
-                          name == "Amapa" ~ "Amapá",
-                          name == "Ceara" ~ "Ceará",
-                          name == "Espirito Santo" ~ "Espírito Santo",
-                          name == "Goias" ~ "Goiás",
-                          name == "Maranhao" ~ "Maranhão",
-                          name == "Para" ~ "Pará",
-                          name == "Paraiba" ~ "Paraíba",
-                          name == "Parana" ~ "Paraná",
-                          name == "Piaui" ~ "Piauí",
-                          name == "Rondonia" ~ "Rondônia",
-                          name == "Sao Paulo" ~ "São Paulo",
-                          name == "Rio Granda do Norte" ~ "Rio Grande do Norte",
-                          name == "Rio de Jeneiro" ~ "Rio de Janeiro",
-                          name == "Distrito Federal" & iso == "BRA" ~ "Distrito Federal (BR)",
-                          # IDN
-                          name == "Central Kalimantan Province" ~ "Middle Kalimantan Province",
-                          name == "Central Sulawesi Province" ~ "Middle Sulawesi Province",
-                          name == "Jakarta Special Capital Region Province" ~ "DKI Jakarta Province",
-                          name == "Special Region of Yogyakarta Province" ~ "D.I. Yogyakarta Province",
-                          name == "East Nusa Tenggara Province" ~ "Eastern Lesser Sundas Province",
-                          name == "North Sumatra Province" ~ "North Sumatera Province",
-                          name == "Southeast Sulawesi Province" ~ "South East Sulawesi Province",
-                          name == "West Nusa Tenggara Province" ~ "Western Lesser Sundas Province",
-                          name == "West Sumatra Province" ~ "West Sumatera Province",
-                          name == "South Sumatra Province" ~ "South Sumatera Province",
-                          name == "Bangka-Belitung Islands Province" ~ "Bangka Belitung Province",
-                          name == "North Kalimantan Province" ~ "North Kalimantan",
-                          name == "Riau Islands Province" ~ "Riau Mainland Province",
-                          name == "Riau Province" ~ "Riau Province",
-                          # MEX
-                          name == "MichoacÃ¡n de Ocampo" ~ 'Michoacan',
-                          name == "Nuevo LeÃ³n" ~ "Nuevo Leon",
-                          name == "QuerÃ©taro de Arteaga" ~ "Queretaro",
-                          name == "San Luis PotosÃ­" ~ "San Luis Potosi",
-                          name == "Veracruz de Ignacio de la Llave" ~ "Veracruz",
-                          name == "YucatÃ¡n" ~ "Yucatan",
-                          name == "Coahuila de Zaragoza" ~ "Coahuila",
-                          name == "MÃ©xico" ~ "Mexico",
-                          name == "Distrito Federal" & iso == "MEX" ~ "Mexico City",
-                          # RUS
-                          name == "Ingushetia" ~ "Republic of Ingushetia",
-                          name == "Khanty-Mansiysk Autonomous Okrug – Ugra" ~ "Khanty-Mansi Autonomous Okrug",
-                          name == "Adygea" ~ "Republic of Adygea",
-                          name == "Khakassia" ~ "Republic of Khakassia",
-                          name == "Tatarstan" ~ "Republic of Tatarstan",
-                          name == "Buryatia" ~ "Republic of Buryatia",
-                          name == "Chechnya" ~ "Chechen Republic",
-                          name == "Chuvashia" ~ "Chuvash Republic",
-                          name == "North Ossetia–Alania" ~ "Republic of North Ossetia-Alania",
-                          name == "Kabardino-Balkaria" ~ "Kabardino-Balkar Republic",
-                          name == "Leningrad oblast" ~ "Leningrad Oblast",
-                          name == "Mari El" ~ "Mari El Republic",
-                          name == "Tuva" ~ "Tuva Republic",
-                          name == "Udmurtia" ~ "Udmurt Republic",
-                          name == "Kalmykia" ~ "Republic of Kalmykia",
-                          name == "Karachay-Cherkessia" ~ "Karachay-Cherkess Republic",
-                          name == "Bashkortostan" ~ "Republic of Bashkortostan",                          
-                          name == "Dagestan" ~ "Republic of Dagestan",
-                          name == "Kaliningrad" ~ "Kaliningrad Oblast",
-                          # PER
-                          name == "Amazonas" & iso == "PER" ~ "Amazonas (PE)",
-                          name == "Ancash" ~ "Áncash",
-                          name == "Madre de Dios" ~ "Madre de dios",
-                          name == "Callao" ~ "Prov. const. del Callao",
-                          name == "San Martín" ~ "San Martin",
-                          # CHL
-                          name == "Región de Antofagasta" ~ "Antofagasta",
-                          name == "Región de Arica y Parinacota" ~ "Arica y Parinacota",
-                          name == "Región de Atacama" ~ "Atacama",
-                          name == "Región de Aysén del Gral.Ibañez del Campo" ~ "Aysén",
-                          name == "Región de Coquimbo" ~ "Coquimbo",
-                          name == "Región de La Araucanía" ~ "Araucanía",
-                          name == "Región de Los Lagos" ~ "Los Lagos",
-                          name == "Región de Los Ríos" ~ "Los Ríos",
-                          name == "Región de Magallanes y Antártica Chilena" ~ "Magallanes and Chilean Antarctica",
-                          name == "Región de Tarapacá" ~ "Tarapacá",
-                          name == "Región de Valparaíso" ~ "Valparaíso",
-                          name == "Región del Libertador Bernardo O'Higgins" ~ "O'Higgins",
-                          name == "Región del Maule" ~ "Maule",
-                          name == "Región Metropolitana de Santiago" ~ "Santiago Metropolitan Region",
-                          T ~ name))                
+    name == "Gyeonggi" ~ "Gyeonggi-do",
+    name == "South Gyeongsang" ~ "Gyeongsangnam-do",
+    name == "North Gyeongsang" ~ "Gyeongsangbuk-do",
+    name == "North Jeolla" ~ "Jeollabuk-do",
+    name == "South Jeolla" ~ "Jeollanam-do",
+    name == "North Chungcheong" ~ "Chungcheongbuk-do",
+    name == "South Chungcheong" ~ "Chungcheongnam-do",
+    name == "Gangwon" ~ "Gangwon-do",
+    name == "Jeju" ~ "Jeju-do",
+    # AUS
+    name == "Australian Capital Territory" ~ "Canberra region (ACT)",
+    name == "Archipiélago de San Andrés, Providencia y Santa Catalina" ~ "San Andrés",
+    name == "Bogota Capital District" ~ "Bogotá Capital District",
+    name == "Córdoba" ~ "Córdoba (CO)",
+    # BRA
+    name == "Amapa" ~ "Amapá",
+    name == "Ceara" ~ "Ceará",
+    name == "Espirito Santo" ~ "Espírito Santo",
+    name == "Goias" ~ "Goiás",
+    name == "Maranhao" ~ "Maranhão",
+    name == "Para" ~ "Pará",
+    name == "Paraiba" ~ "Paraíba",
+    name == "Parana" ~ "Paraná",
+    name == "Piaui" ~ "Piauí",
+    name == "Rondonia" ~ "Rondônia",
+    name == "Sao Paulo" ~ "São Paulo",
+    name == "Rio Granda do Norte" ~ "Rio Grande do Norte",
+    name == "Rio de Jeneiro" ~ "Rio de Janeiro",
+    name == "Distrito Federal" & iso == "BRA" ~ "Distrito Federal (BR)",
+    # IDN
+    name == "Central Kalimantan Province" ~ "Middle Kalimantan Province",
+    name == "Central Sulawesi Province" ~ "Middle Sulawesi Province",
+    name == "Jakarta Special Capital Region Province" ~ "DKI Jakarta Province",
+    name == "Special Region of Yogyakarta Province" ~ "D.I. Yogyakarta Province",
+    name == "East Nusa Tenggara Province" ~ "Eastern Lesser Sundas Province",
+    name == "North Sumatra Province" ~ "North Sumatera Province",
+    name == "Southeast Sulawesi Province" ~ "South East Sulawesi Province",
+    name == "West Nusa Tenggara Province" ~ "Western Lesser Sundas Province",
+    name == "West Sumatra Province" ~ "West Sumatera Province",
+    name == "South Sumatra Province" ~ "South Sumatera Province",
+    name == "Bangka-Belitung Islands Province" ~ "Bangka Belitung Province",
+    name == "North Kalimantan Province" ~ "North Kalimantan",
+    name == "Riau Islands Province" ~ "Riau Mainland Province",
+    name == "Riau Province" ~ "Riau Province",
+    # MEX
+    name == "MichoacÃ¡n de Ocampo" ~ 'Michoacan',
+    name == "Nuevo LeÃ³n" ~ "Nuevo Leon",
+    name == "QuerÃ©taro de Arteaga" ~ "Queretaro",
+    name == "San Luis PotosÃ­" ~ "San Luis Potosi",
+    name == "Veracruz de Ignacio de la Llave" ~ "Veracruz",
+    name == "YucatÃ¡n" ~ "Yucatan",
+    name == "Coahuila de Zaragoza" ~ "Coahuila",
+    name == "MÃ©xico" ~ "Mexico",
+    name == "Distrito Federal" & iso == "MEX" ~ "Mexico City",
+    # RUS
+    name == "Ingushetia" ~ "Republic of Ingushetia",
+    name == "Khanty-Mansiysk Autonomous Okrug – Ugra" ~ "Khanty-Mansi Autonomous Okrug",
+    name == "Adygea" ~ "Republic of Adygea",
+    name == "Khakassia" ~ "Republic of Khakassia",
+    name == "Tatarstan" ~ "Republic of Tatarstan",
+    name == "Buryatia" ~ "Republic of Buryatia",
+    name == "Chechnya" ~ "Chechen Republic",
+    name == "Chuvashia" ~ "Chuvash Republic",
+    name == "North Ossetia–Alania" ~ "Republic of North Ossetia-Alania",
+    name == "Kabardino-Balkaria" ~ "Kabardino-Balkar Republic",
+    name == "Leningrad oblast" ~ "Leningrad Oblast",
+    name == "Mari El" ~ "Mari El Republic",
+    name == "Tuva" ~ "Tuva Republic",
+    name == "Udmurtia" ~ "Udmurt Republic",
+    name == "Kalmykia" ~ "Republic of Kalmykia",
+    name == "Karachay-Cherkessia" ~ "Karachay-Cherkess Republic",
+    name == "Bashkortostan" ~ "Republic of Bashkortostan",                          
+    name == "Dagestan" ~ "Republic of Dagestan",
+    name == "Kaliningrad" ~ "Kaliningrad Oblast",
+    # PER
+    name == "Amazonas" & iso == "PER" ~ "Amazonas (PE)",
+    name == "Ancash" ~ "Áncash",
+    name == "Madre de Dios" ~ "Madre de dios",
+    name == "Callao" ~ "Prov. const. del Callao",
+    name == "San Martín" ~ "San Martin",
+    # CHL
+    name == "Región de Antofagasta" ~ "Antofagasta",
+    name == "Región de Arica y Parinacota" ~ "Arica y Parinacota",
+    name == "Región de Atacama" ~ "Atacama",
+    name == "Región de Aysén del Gral.Ibañez del Campo" ~ "Aysén",
+    name == "Región de Coquimbo" ~ "Coquimbo",
+    name == "Región de La Araucanía" ~ "Araucanía",
+    name == "Región de Los Lagos" ~ "Los Lagos",
+    name == "Región de Los Ríos" ~ "Los Ríos",
+    name == "Región de Magallanes y Antártica Chilena" ~ "Magallanes and Chilean Antarctica",
+    name == "Región de Tarapacá" ~ "Tarapacá",
+    name == "Región de Valparaíso" ~ "Valparaíso",
+    name == "Región del Libertador Bernardo O'Higgins" ~ "O'Higgins",
+    name == "Región del Maule" ~ "Maule",
+    name == "Región Metropolitana de Santiago" ~ "Santiago Metropolitan Region",
+    T ~ name))                
 
-st_write(non_nuts_base_regions, "step2_obtain_gdp_data/temp/non_nuts_base_regions.gpkg", append = F)
+st_write(non_nuts_base_regions, "version2_year2012_2022/step2_obtain_gdp_data/temp/non_nuts_base_regions.gpkg", append = F)
 
 non_nuts_aggregate_regions <- oecd_regional_data_clean %>% 
   filter(iso %in% pull(filter(non_nuts_countries, min_admin_unit == 3), iso)) %>% 
@@ -444,15 +534,27 @@ non_nuts_aggregate_regions <- oecd_regional_data_clean %>%
   rename(id = admin_2_id) %>% 
   dplyr::select(id, iso, geom)
 
+# --------------------- Important !!! ---------------------------- #
+# Aggregate to nations geometry
+# there are some invalid geometries from the ADM1 file that are not able to be fixed through st_make_valid()
+# So export them and use QGIS to st_union:
+
+# And then in QGIS: 
+# 1. Processing > Toolbox > Aggregate tool
+# 2. Choose "iso" as the "Group by expression"
+# 3. export as "temp/non_nuts_nations.gpkg", choose "CRS" as: "EPSG:4326 - WGS 84"
+# Remember all the CRS is in "EPSG:4326 - WGS 84"
+# --------------------- Important !!! ---------------------------- #
+
 aggregate <- qgisprocess::qgis_run_algorithm(
   "native:aggregate",
-  INPUT = "step2_obtain_gdp_data/temp/non_nuts_base_regions.gpkg", 
+  INPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/non_nuts_base_regions.gpkg", 
   GROUP_BY = "iso",  
   AGGREGATES = list(list("aggregate" = "concatenate", "input" = '"iso"', "delimiter" = ",", "name" = "iso", "type" = 10, "length" = 0, "precision" = 0)),
-  OUTPUT = "step2_obtain_gdp_data/temp/non_nuts_nations.gpkg"
+  OUTPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/non_nuts_nations.gpkg"
 )
 
-non_nuts_nations <- read_sf("step2_obtain_gdp_data/temp/non_nuts_nations.gpkg")  %>%  
+non_nuts_nations <- read_sf("version2_year2012_2022/step2_obtain_gdp_data/temp/non_nuts_nations.gpkg")  %>%  
   mutate(iso = substr(iso, 1, 3))  %>% 
   mutate(id = iso)  %>% 
   dplyr::select(c(id, iso, geom))
@@ -470,5 +572,5 @@ oecd_sf <- non_nuts_base_regions %>%
 training_poly <- oecd_sf %>% 
   filter(id %in% training_df$id)
 
-st_write(oecd_sf, "step2_obtain_gdp_data/temp/oecd_poly.gpkg", append = F)
-st_write(training_poly, "step2_obtain_gdp_data/temp/oecd_training_poly.gpkg", append = F)
+st_write(oecd_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/oecd_poly.gpkg", append = F)
+st_write(training_poly, "version2_year2012_2022/step2_obtain_gdp_data/temp/oecd_training_poly.gpkg", append = F)
