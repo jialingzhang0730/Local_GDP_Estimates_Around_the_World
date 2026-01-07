@@ -21,7 +21,7 @@ library(sf)
 # Only read the last two sheets, which contain data for the years 2012 to 2022.
 IND_regional_rgdp <- map_dfr(.x = c("T_28(iii)", "T_28(iv)"), .f = function(sheet){
   
-  df_out <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/IND/T28_09122024E699603AE68F445FB6E485839CCB697B.XLSX", skip = 5, n_max = 33, sheet = sheet) %>%
+  df_out <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/IND/T28_09122024E699603AE68F445FB6E485839CCB697B.XLSX", skip = 5, n_max = 33, sheet = sheet) %>%
     dplyr::select(-any_of("2023-24")) %>% 
     pivot_longer(cols = matches("\\d{4}"), names_to = "year")
   
@@ -45,7 +45,7 @@ IND_regional_rgdp <- map_dfr(.x = c("T_28(iii)", "T_28(iv)"), .f = function(shee
          min_admin_unit = 2, admin_1_name = "India") %>% 
   dplyr::select(id, iso, year, min_admin_unit, starts_with("admin_2"), starts_with("admin_1"))
 
-write.csv(IND_regional_rgdp, "version2_year2012_2022/step2_obtain_gdp_data/temp/ind_gdp_clean.csv", row.names = F)
+write.csv(IND_regional_rgdp, "step2_obtain_gdp_data/temp/ind_gdp_clean.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create training data
@@ -57,12 +57,12 @@ training_df <- IND_regional_rgdp %>%
   dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
          parent_admin_unit, parent_name, matches("parent_rgdp")) 
 
-write.csv(training_df, "version2_year2012_2022/step2_obtain_gdp_data/temp/ind_training_data.csv", row.names = F)
+write.csv(training_df, "step2_obtain_gdp_data/temp/ind_training_data.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create shapefiles
 
-IND_regional_sf <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
+IND_regional_sf <- read_sf("step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
   filter(GID_0 == "IND") %>%
   rename(name = NAME_1, iso = GID_0) %>%
   mutate(name = case_when(name == "Andaman and Nicobar" ~ "Andaman & Nicobar Islands",
@@ -73,6 +73,6 @@ IND_regional_sf <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs
   mutate(id = paste0(name, "_", iso)) %>% 
   dplyr::select(id, iso, geom)  
 
-st_write(IND_regional_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/ind_admin_2.gpkg", append = F)
+st_write(IND_regional_sf, "step2_obtain_gdp_data/temp/ind_admin_2.gpkg", append = F)
 
 # eof ----
