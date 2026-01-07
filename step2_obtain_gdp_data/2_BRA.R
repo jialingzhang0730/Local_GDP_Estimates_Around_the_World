@@ -35,7 +35,7 @@ sheet_names <- c("Tabela3", "Tabela4", "Tabela5", "Tabela6", "Tabela7", "Tabela8
                  "Tabela30", "Tabela31", "Tabela32", "Tabela33") # do not incude "Regiao xxx" and "Brasil"
 
 for (sheet in sheet_names) {
-  data <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/BRA/PIB_Otica_Renda_UF.xls", sheet = sheet, col_names = FALSE)  # Read the specific sheet
+  data <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/BRA/PIB_Otica_Renda_UF.xls", sheet = sheet, col_names = FALSE)  # Read the specific sheet
   admin_2_name <- data[7,1] # Extract the admin_2_name (row 7 is the region name), double check this when you update!!!
   
   # Extract the admin_2_rgdp_total (the intersection of column named "2021" and row named "PIB - Ótica da Renda")
