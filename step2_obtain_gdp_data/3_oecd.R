@@ -356,7 +356,7 @@ nuts_sf_pre <- lapply(c("0", "1", "2", "3"), function(admin_level){
   dplyr::select(id, iso, geometry) %>% 
   rename(geom = geometry)
 
-st_write(nuts_sf_pre, "version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf_pre.gpkg", append = F)
+st_write(nuts_sf_pre, "step2_obtain_gdp_data/temp/nuts_sf_pre.gpkg", append = F)
 
 # --------------------- Important !!! ---------------------------- #
 # large waters are not excluded from nuts regions, so do it in QGIS as described below:
@@ -369,13 +369,13 @@ st_write(nuts_sf_pre, "version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf
 
 difference <- qgis_run_algorithm(
   alg = "native:difference",
-  INPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf_pre.gpkg", 
-  OVERLAY = "version2_year2012_2022/step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
-  OUTPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf.gpkg", 
+  INPUT = "step2_obtain_gdp_data/temp/nuts_sf_pre.gpkg", 
+  OVERLAY = "step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
+  OUTPUT = "step2_obtain_gdp_data/temp/nuts_sf.gpkg", 
   .quiet = FALSE
 )
 
-nuts_sf <- read_sf("version2_year2012_2022/step2_obtain_gdp_data/temp/nuts_sf.gpkg")
+nuts_sf <- read_sf("step2_obtain_gdp_data/temp/nuts_sf.gpkg")
 
 ## Non-NUTS data -----
 non_nuts_regions <- filter(training_df, !id %in% nuts_sf$id) %>% 
@@ -392,7 +392,7 @@ non_nuts_countries <- non_nuts_regions %>%
 #                       GDP of "West Coast Region" is included in "Tasman-Nelson-Marlborough"
 #                       Canterbury includes Chatham Islands.
 #   2. For Chile, Nuble region (CLO16) is not included because this region appears since 2018, which was included in the Bio-Bio region (CL08)
-nzl <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
+nzl <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
   filter(shapeGroup == "NZL") %>% 
   rename(name = shapeName, iso = shapeGroup) %>% 
   mutate(name = ifelse(iso == "NZL", gsub(" Region$", "", name), name))  %>% 
@@ -404,7 +404,7 @@ nzl <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_w
   summarize(geom = st_union(geom), .groups = "drop") %>% 
   rename(name = region) 
 
-chl <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
+chl <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
   filter(shapeGroup == "CHL") %>% 
   rename(name = shapeName, iso = shapeGroup)  %>% 
   mutate(name = iconv(name, from = "UTF-8", to = "LATIN1"))  %>% 
@@ -414,7 +414,7 @@ chl <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_w
   summarize(geom = st_union(geom), .groups = "drop") %>% 
   rename(name = region) 
 
-non_nuts_base_regions <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
+non_nuts_base_regions <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>% 
   filter(shapeGroup %in% (pull(non_nuts_countries, iso) %>% setdiff(c("NZL", "CHL")))) %>% 
   rename(name = shapeName, iso = shapeGroup)  %>% 
   mutate(name = ifelse(iso == "IDN", paste0(name, " Province"), name)) %>% 
@@ -520,7 +520,7 @@ non_nuts_base_regions <- read_sf("version2_year2012_2022/step1_obtain_gis_data/o
     name == "Región Metropolitana de Santiago" ~ "Santiago Metropolitan Region",
     T ~ name))                
 
-st_write(non_nuts_base_regions, "version2_year2012_2022/step2_obtain_gdp_data/temp/non_nuts_base_regions.gpkg", append = F)
+st_write(non_nuts_base_regions, "step2_obtain_gdp_data/temp/non_nuts_base_regions.gpkg", append = F)
 
 non_nuts_aggregate_regions <- oecd_regional_data_clean %>% 
   filter(iso %in% pull(filter(non_nuts_countries, min_admin_unit == 3), iso)) %>% 
@@ -548,13 +548,13 @@ non_nuts_aggregate_regions <- oecd_regional_data_clean %>%
 
 aggregate <- qgisprocess::qgis_run_algorithm(
   "native:aggregate",
-  INPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/non_nuts_base_regions.gpkg", 
+  INPUT = "step2_obtain_gdp_data/temp/non_nuts_base_regions.gpkg", 
   GROUP_BY = "iso",  
   AGGREGATES = list(list("aggregate" = "concatenate", "input" = '"iso"', "delimiter" = ",", "name" = "iso", "type" = 10, "length" = 0, "precision" = 0)),
-  OUTPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/non_nuts_nations.gpkg"
+  OUTPUT = "step2_obtain_gdp_data/temp/non_nuts_nations.gpkg"
 )
 
-non_nuts_nations <- read_sf("version2_year2012_2022/step2_obtain_gdp_data/temp/non_nuts_nations.gpkg")  %>%  
+non_nuts_nations <- read_sf("step2_obtain_gdp_data/temp/non_nuts_nations.gpkg")  %>%  
   mutate(iso = substr(iso, 1, 3))  %>% 
   mutate(id = iso)  %>% 
   dplyr::select(c(id, iso, geom))
@@ -572,5 +572,5 @@ oecd_sf <- non_nuts_base_regions %>%
 training_poly <- oecd_sf %>% 
   filter(id %in% training_df$id)
 
-st_write(oecd_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/oecd_poly.gpkg", append = F)
-st_write(training_poly, "version2_year2012_2022/step2_obtain_gdp_data/temp/oecd_training_poly.gpkg", append = F)
+st_write(oecd_sf, "step2_obtain_gdp_data/temp/oecd_poly.gpkg", append = F)
+st_write(training_poly, "step2_obtain_gdp_data/temp/oecd_training_poly.gpkg", append = F)
