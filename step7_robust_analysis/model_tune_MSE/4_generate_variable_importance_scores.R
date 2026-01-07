@@ -11,9 +11,6 @@ library(tidyverse)
 library(ranger)
 library(tidymodels)
 
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP/version2_year2012_2022")
-
 # ============================================================================ #
 # CONFIGURATION
 # ============================================================================ #
