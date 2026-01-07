@@ -36,9 +36,6 @@ library(exactextractr)
 library(terra)
 library(raster)
 
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP/version2_year2012_2022")
-
 # ------------------------------------------------------------------------------------------------------------------------------
 # Model 9.1: 1deg
 
