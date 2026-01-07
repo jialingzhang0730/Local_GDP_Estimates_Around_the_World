@@ -19,9 +19,6 @@ library(parallel)
 library(readxl)
 library(units)
 
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP/version2_year2012_2022")
-
 # ------------------------------------------------- #
 # obtain full training data
 data_train <- read.csv("step4_benchmark_model/outputs/new_data_train_0_25deg.csv") 
