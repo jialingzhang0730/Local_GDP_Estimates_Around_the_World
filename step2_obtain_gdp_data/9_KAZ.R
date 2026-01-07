@@ -21,7 +21,7 @@ library(sf)
 # ------------------------------------------------- #
 # Obtain GDP data: 
 
-KAZ_regional_rgdp_pre <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
+KAZ_regional_rgdp_pre <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
        slice(-1) %>% # Remove the first row, as it contains the total GDP for the entire country.
        rename(admin_2_name = ...1)  %>% 
        dplyr::select(c(admin_2_name, "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015",
@@ -31,7 +31,7 @@ KAZ_regional_rgdp_pre <- read_excel("version2_year2012_2022/step2_obtain_gdp_dat
                                    "Ulytau", "Кaragandy")) # Those regions boundary have changed, deal with it below
 
 # deal with: Start 2018, Ontustik Kazakhstan is separated into Shymkent city + Turkistan
-ost <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
+ost <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
        slice(-1) %>% # Remove the first row, as it contains the total GDP for the entire country.
        rename(admin_2_name = ...1)  %>% 
        dplyr::select(c(admin_2_name, "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015",
@@ -55,7 +55,7 @@ ost <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/
        filter(admin_2_name == "Ontustik Kazakhstan")
 
 # deal with: Start 2021, Abay is separated from Shygys Kazakhstan
-as <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
+as <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
        slice(-1) %>% # Remove the first row, as it contains the total GDP for the entire country.
        rename(admin_2_name = ...1)  %>% 
        dplyr::select(c(admin_2_name, "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015",
@@ -81,7 +81,7 @@ as <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/r
        filter(admin_2_name == "Shygys Kazakhstan")
 
 # deal with: Start 2021, Zhetisu is separated from Аlmaty
-za <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
+za <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
        slice(-1) %>% # Remove the first row, as it contains the total GDP for the entire country.
        rename(admin_2_name = ...1)  %>% 
        dplyr::select(c(admin_2_name, "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015",
@@ -107,7 +107,7 @@ za <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/r
        filter(admin_2_name == "Аlmaty")
 
 # deal with: Start 2021, Ulytau is separated from Кaragandy
-uk <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
+uk <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
        slice(-1) %>% # Remove the first row, as it contains the total GDP for the entire country.
        rename(admin_2_name = ...1)  %>% 
        dplyr::select(c(admin_2_name, "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015",
@@ -146,7 +146,7 @@ KAZ_regional_rgdp <- bind_rows(KAZ_regional_rgdp_pre, ost, as, za, uk)  %>%
               min_admin_unit = 2, admin_1_name = "Kazakhstan") %>% 
        dplyr::select(id, iso, year, min_admin_unit, starts_with("admin_2"), starts_with("admin_1"))
 
-write.csv(KAZ_regional_rgdp, "version2_year2012_2022/step2_obtain_gdp_data/temp/kaz_gdp_clean.csv", row.names = F)
+write.csv(KAZ_regional_rgdp, "step2_obtain_gdp_data/temp/kaz_gdp_clean.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create training data
@@ -158,12 +158,12 @@ training_df <- KAZ_regional_rgdp %>%
   dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
          parent_admin_unit, parent_name, matches("parent_rgdp"))
 
-write.csv(training_df, "version2_year2012_2022/step2_obtain_gdp_data/temp/kaz_training_data.csv", row.names = F)
+write.csv(training_df, "step2_obtain_gdp_data/temp/kaz_training_data.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create shapefiles
 
-KAZ_regional_sf <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>%  
+KAZ_regional_sf <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large_waters.gpkg") %>%  
   rename(name = shapeName, iso = shapeGroup) %>%
   filter(iso == "KAZ")  %>% 
   mutate(name = case_when(name == "Akmola Region" ~ "Akmola",
@@ -187,6 +187,6 @@ KAZ_regional_sf <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs
   mutate(id = paste0(name, "_", iso)) %>% 
   dplyr::select(id, iso, geom)
 
-st_write(KAZ_regional_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/kaz_admin_2.gpkg", append = F)
+st_write(KAZ_regional_sf, "step2_obtain_gdp_data/temp/kaz_admin_2.gpkg", append = F)
 
 # eof ----
