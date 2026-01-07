@@ -59,7 +59,7 @@ When updating the results to Version 2, we have made the following changes relat
 
 - There are no changes to the predictors used or their data sources. Please refer to the Appendix for details.
 
-- Fixed a typo in Version 1 shapefiles where the ISO code for Alaska was incorrectly set to ``Ala'' instead of ``USA''.
+- Fixed a typo in Version 1 shapefiles where the ISO code for Alaska was incorrectly set to ''Ala'' instead of ''USA''.
 
 ## Acknowledgement
 We thank Reigner Kane, Sreyas Mahadevan, Jordan Rosenthal-Kay, and Julian Tsang for excellent research assistance and contributions during the initial stages of this project.
