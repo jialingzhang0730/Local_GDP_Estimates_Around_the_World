@@ -30,7 +30,7 @@ library(docxtractr)
 # ------------------------------------------------- #
 # Obtain RUS 2020 and 2021 subnational GDP data
 
-RUS_2020_2021 <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/RUS/RUS.xlsx", sheet = "data")  %>% 
+RUS_2020_2021 <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/RUS/RUS.xlsx", sheet = "data")  %>% 
     dplyr::select(c(id, name, region_gdp, year))  %>% 
     filter(year %in% c(2020, 2021))  %>% 
     mutate(iso = "RUS", admin_1_name = "Russia")  %>% 
@@ -39,12 +39,12 @@ RUS_2020_2021 <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs
     mutate(admin_1_rgdp_total = sum(admin_2_rgdp_total))  %>% 
     ungroup()
 
-write.csv(RUS_2020_2021, "version2_year2012_2022/step2_obtain_gdp_data/temp/RUS_2020_2021.csv", row.names = F)
+write.csv(RUS_2020_2021, "step2_obtain_gdp_data/temp/RUS_2020_2021.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Obtain RUS 2022 subnational GDP data
 
-RUS_2022 <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/RUS/RUS.xlsx", sheet = "data")  %>% 
+RUS_2022 <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/RUS/RUS.xlsx", sheet = "data")  %>% 
     dplyr::select(c(id, name, region_gdp, year))  %>% 
     filter(year == 2022)  %>% 
     mutate(iso = "RUS", admin_1_name = "Russia")  %>% 
@@ -53,7 +53,7 @@ RUS_2022 <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_
     mutate(admin_1_rgdp_total = sum(admin_2_rgdp_total))  %>% 
     ungroup()
 
-write.csv(RUS_2022, "version2_year2012_2022/step2_obtain_gdp_data/temp/RUS_2022.csv", row.names = F)
+write.csv(RUS_2022, "step2_obtain_gdp_data/temp/RUS_2022.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create shapefiles -----
