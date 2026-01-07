@@ -21,7 +21,7 @@ library(qgisprocess)
 # ------------------------------------------------- #
 # Obtain GDP data in current dollars: year 2001 - 2022
 
-county_gdp <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2022.csv")  %>% 
+county_gdp <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2022.csv")  %>% 
   filter(LineCode %in% c(1))  %>% # 1 stands for All industry
   dplyr::select(-c(Region, TableName, IndustryClassification, Description, Unit))  %>% 
   pivot_longer(cols = starts_with("X"),
@@ -44,7 +44,7 @@ county_gdp <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_
                 .fns = ~ .x/1000))  %>% # in millions of $
   filter(substr(fips,1,2) != "02") # let's do not include Alaska's county level data, because the geom keeps changing; consider it as a separate big country
 
-state_ctry_gdp <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2022.csv")  %>% 
+state_ctry_gdp <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/USA/CAGDP2/CAGDP2__ALL_AREAS_2001_2022.csv")  %>% 
   filter(LineCode %in% c(1))  %>% # 1 stands for All industry
   dplyr::select(-c(Region, TableName, IndustryClassification, Description, Unit))  %>% 
   pivot_longer(cols = starts_with("X"),
@@ -92,9 +92,9 @@ training_df <- county_gdp_recoded %>%
   dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
          parent_admin_unit, parent_name, matches("parent_rgdp"))
 
-write.csv(county_gdp_recoded, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_gdp_clean.csv", row.names = F)
-write.csv(training_df, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_training_data.csv", row.names = F)
-write.csv(state_gdp, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_state_gdp.csv", row.names = F)
+write.csv(county_gdp_recoded, "step2_obtain_gdp_data/temp/usa_gdp_clean.csv", row.names = F)
+write.csv(training_df, "step2_obtain_gdp_data/temp/usa_training_data.csv", row.names = F)
+write.csv(state_gdp, "step2_obtain_gdp_data/temp/usa_state_gdp.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create shapefiles and remove large inland waters
@@ -342,8 +342,8 @@ country_sf <- county_sf_2020 %>%
   summarize(name = "United States", admin_unit = 1, geom = st_union(geometry)) %>% 
   mutate(iso = "USA")
 
-st_write(country_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_1_with_waters.gpkg", append = F)
-st_write(county_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_3_with_waters.gpkg", append = F)
+st_write(country_sf, "step2_obtain_gdp_data/temp/usa_admin_1_with_waters.gpkg", append = F)
+st_write(county_sf, "step2_obtain_gdp_data/temp/usa_admin_3_with_waters.gpkg", append = F)
 
 # --------------------- Important !!! ---------------------------- #
 # Apply "difference" command in QGIS to get rid of inland large waters
@@ -358,17 +358,17 @@ st_write(county_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin
 
 difference <- qgis_run_algorithm(
   alg = "native:difference",
-  INPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_1_with_waters.gpkg", 
-  OVERLAY = "version2_year2012_2022/step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
-  OUTPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_1.gpkg", 
+  INPUT = "step2_obtain_gdp_data/temp/usa_admin_1_with_waters.gpkg", 
+  OVERLAY = "step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
+  OUTPUT = "step2_obtain_gdp_data/temp/usa_admin_1.gpkg", 
   .quiet = FALSE
 )
 
 difference <- qgis_run_algorithm(
   alg = "native:difference",
-  INPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_3_with_waters.gpkg", 
-  OVERLAY = "version2_year2012_2022/step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
-  OUTPUT = "version2_year2012_2022/step2_obtain_gdp_data/temp/usa_admin_3.gpkg", 
+  INPUT = "step2_obtain_gdp_data/temp/usa_admin_3_with_waters.gpkg", 
+  OVERLAY = "step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
+  OUTPUT = "step2_obtain_gdp_data/temp/usa_admin_3.gpkg", 
   .quiet = FALSE
 )
 
