@@ -27,12 +27,12 @@ library(units)
 library(readr)
 
 # read those regional data obtained before
-files <- list.files("version2_year2012_2022/step2_obtain_gdp_data/temp") %>% 
+files <- list.files("step2_obtain_gdp_data/temp") %>% 
   .[grepl("training_data.csv$", .)]
 
 training_data_complete_pre <- lapply(files, function(file){
   
-  out_df <- read_csv(paste0("version2_year2012_2022/step2_obtain_gdp_data/temp/", file), col_types = cols(id = col_character()))  %>% 
+  out_df <- read_csv(paste0("step2_obtain_gdp_data/temp/", file), col_types = cols(id = col_character()))  %>% 
     mutate(id = as.character(id))
   
   return(out_df)
@@ -68,7 +68,7 @@ training_data_complete <- training_data_complete_pre  %>%
 # Note, we actually only need one type of national data, probabily use GDP in constant 2021 USD because it has no missing data.
 # We only need one type because we only need "share" in training the model
 
-national_gdp <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/temp/national_gdp_const_2021_USD.csv")  %>% 
+national_gdp <- read.csv("step2_obtain_gdp_data/temp/national_gdp_const_2021_USD.csv")  %>% 
   rename(rgdp_2021_USD = rgdp_total)
 
 # ------------------------------------------------- #
@@ -93,7 +93,7 @@ training_data_rescaled <- training_data_complete  %>%
 # Alaska's data are not put in the training sample, but we cannot ignore it. 
 # We need to consider Alaska as a "country" and store the data
 
-alaska_state <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/temp/usa_state_gdp.csv")  %>% 
+alaska_state <- read.csv("step2_obtain_gdp_data/temp/usa_state_gdp.csv")  %>% 
   filter(admin_2_name == "Alaska")  %>% 
   filter(year >= 2012, year <= 2022) %>% # we only need year 2012-2022 for now
   left_join(national_gdp_scale_factor)  %>% 
@@ -133,11 +133,11 @@ from_v1 <- anti_join(A, B, by = c("id", "year", "iso")) %>%
 
 rgdp_total_rescaled_full <- rbind(rgdp_total_rescaled, from_v1)
 
-write.csv(rgdp_total_rescaled_full, "version2_year2012_2022/step2_obtain_gdp_data/outputs/rgdp_total_rescaled.csv", row.names = F)
+write.csv(rgdp_total_rescaled_full, "step2_obtain_gdp_data/outputs/rgdp_total_rescaled.csv", row.names = F)
 
 # rescale DOSE's subnational gdp data
 
-certain_developing_isos <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/temp/DOSE_gdp_full.csv")  %>% 
+certain_developing_isos <- read.csv("step2_obtain_gdp_data/temp/DOSE_gdp_full.csv")  %>% 
   left_join(national_gdp)  %>% 
   group_by(iso, year)  %>% 
   mutate(unit_rgdp_total = rgdp_2021_USD*grp_lcu/sum(grp_lcu))  %>% 
@@ -145,4 +145,4 @@ certain_developing_isos <- read.csv("version2_year2012_2022/step2_obtain_gdp_dat
   rename(parent_rgdp_total = rgdp_2021_USD, national_population = population)  %>% 
   dplyr::select(c(iso, id, year, unit_rgdp_total, parent_rgdp_total, national_population))  
 
-write.csv(certain_developing_isos, "version2_year2012_2022/step2_obtain_gdp_data/outputs/DOSE_certain_developing_isos_total_rescaled.csv", row.names = F)
+write.csv(certain_developing_isos, "step2_obtain_gdp_data/outputs/DOSE_certain_developing_isos_total_rescaled.csv", row.names = F)
