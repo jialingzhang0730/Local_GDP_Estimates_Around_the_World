@@ -23,7 +23,7 @@ library(qgisprocess)
 iso_to_include <- c("THA", "MOZ", "UZB", "KEN", "VNM", "SRB", "ECU", "BLR",
                     "ALB", "LKA", "BIH")
 
-DOSE_gdp_pre <- read.csv("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/DOSE/DOSE_V2.11.csv")  %>% 
+DOSE_gdp_pre <- read.csv("step2_obtain_gdp_data/inputs/gdp_data/regional/DOSE/DOSE_V2.11.csv")  %>% 
   dplyr::select(c(GID_0, GID_1, year, grp_lcu, pop, grp_pc_lcu))  %>%  # grp_lcu means regional product in local currency
   rename(iso = GID_0, id = GID_1)  %>% 
   filter(year >= 2012, iso %in% iso_to_include)  %>% 
@@ -38,4 +38,4 @@ which <- DOSE_gdp_pre  %>%
 DOSE_gdp_full <- DOSE_gdp_pre  %>% 
   anti_join(which, by = c("iso", "year"))
 
-write.csv(DOSE_gdp_full, "version2_year2012_2022/step2_obtain_gdp_data/temp/DOSE_gdp_full.csv", row.names = F)
+write.csv(DOSE_gdp_full, "step2_obtain_gdp_data/temp/DOSE_gdp_full.csv", row.names = F)
