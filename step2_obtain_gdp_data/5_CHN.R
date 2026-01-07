@@ -15,7 +15,7 @@ library(sf)
 # ------------------------------------------------- #
 # Obtain GDP data:
 
-CHN_regional_rgdp <- read_xls("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/CHN/AnnualbyProvince.xls", skip = 3, n_max = 31)  %>% 
+CHN_regional_rgdp <- read_xls("step2_obtain_gdp_data/inputs/gdp_data/regional/CHN/AnnualbyProvince.xls", skip = 3, n_max = 31)  %>% 
   pivot_longer(cols = matches("\\d{4}"), names_to = "year")  %>% 
   mutate(year = as.numeric(year), admin_unit = 2)  %>% 
   rename(rgdp_total = value)  %>% 
@@ -31,7 +31,7 @@ CHN_regional_rgdp <- read_xls("version2_year2012_2022/step2_obtain_gdp_data/inpu
   rename(admin_2_name = Region) %>% 
   dplyr::select(id, iso, year, min_admin_unit, starts_with("admin_2"), starts_with("admin_1"))
 
-write.csv(CHN_regional_rgdp, "version2_year2012_2022/step2_obtain_gdp_data/temp/chn_gdp_clean.csv", row.names = F)
+write.csv(CHN_regional_rgdp, "step2_obtain_gdp_data/temp/chn_gdp_clean.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create training data
@@ -43,13 +43,13 @@ training_df <- CHN_regional_rgdp %>%
   dplyr::select(id, year, iso, unit_name, min_admin_unit, matches("unit_rgdp"),
          parent_admin_unit, parent_name, matches("parent_rgdp")) 
 
-write.csv(training_df, "version2_year2012_2022/step2_obtain_gdp_data/temp/chn_training_data.csv", row.names = F)
+write.csv(training_df, "step2_obtain_gdp_data/temp/chn_training_data.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create shapefiles
 
 # Obtain the sub-national administrative boundary of China: province boundary 
-CHN_regional_sf <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
+CHN_regional_sf <- read_sf("step1_obtain_gis_data/outputs/gdam_prov_level1_without_largewater.gpkg")  %>% 
   filter(GID_0 == "CHN") %>%
   rename(name = NAME_1, iso = GID_0) %>%
   filter(!name %in% c("Hong Kong", "Macau")) %>% # separate those two out
@@ -62,6 +62,6 @@ CHN_regional_sf <- read_sf("version2_year2012_2022/step1_obtain_gis_data/outputs
   mutate(id = paste0(name, "_", iso)) %>% 
   dplyr::select(id, iso, geom)  
 
-st_write(CHN_regional_sf, "version2_year2012_2022/step2_obtain_gdp_data/temp/chn_admin_2.gpkg", append = F)
+st_write(CHN_regional_sf, "step2_obtain_gdp_data/temp/chn_admin_2.gpkg", append = F)
 
 # eof ----
