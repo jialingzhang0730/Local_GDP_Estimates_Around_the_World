@@ -1,5 +1,5 @@
 # --------------------------------- Task Summary --------------------------------- #
-# This file retrieves Brazil's regional GDP data for the years 2019 and 2020.
+# This file retrieves Brazil's regional GDP data for the years 2021.
 # As of June 8, 2024, Brazil's regional GDP data for 2021 has not been published by the OECD. 
 #   Therefore, the data is sourced from the Brazilian Institute of Geography and Statistics (IBGE), 
 #   accessible at: https://www.ibge.gov.br/en/statistics/economic/national-accounts/16855-regional-accounts-of-brazil.html.
