@@ -5,25 +5,16 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
-# Load packages 
+# Load packages
 library(qgisprocess)
 
-# step1: Drag the "step2_obtain_gdp_data/outputs/world_poly.gpkg" and "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_xdegree.gpkg"
-# step2: Alaska is separated from USA, but since Alaska has no direct touch with mainland US, so we are ok. Otherwise you need to do the aggregate.
-# step3: Fix geometry of "step2_obtain_gdp_data/outputs/world_poly.gpkg": 
-#   Click "Processing/Toolbox/Fix geometries"; 
-#   Choose "world_poly" as Input layer, "Linework" as Repair method 
-#   There will be a new layer named "Fix geometries" appear
-# step4: Intersect the new "Fix geometries" and "just_grid_xdegree.gpkg":
-#   Click "Vector/Geoprocessing Tools/Intersection/Run as Batch Process", 
-#   Add four rows, for each row, put the new "Fix geometries" as Input layer, "just_grid_xdegree.gpkg" as the overlay layer
-#       in the "Intersection" column (that is where you save the file), save it as "step5_predict_and_post_adjustments/inputs/country_xdeg_intersected.gpkg"
+# Intersect the world polygons (with large waters already removed) with each grid resolution.
+# Outputs are written to step5_predict_and_post_adjustments/outputs/country_xdeg_intersected.gpkg
+# and consumed by step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_xdeg.R.
 
 qgis_run_algorithm(
     "native:intersection",

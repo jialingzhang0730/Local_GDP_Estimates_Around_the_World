@@ -14,11 +14,7 @@
 # ------------------------------------ #
 
 # Clean environment and manage memory
-rm(list = ls())
-gc()
 
-# Change your directory here:
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages")
 
 # step0: prepare R packages
 source("R_package_needed.R", echo = TRUE)

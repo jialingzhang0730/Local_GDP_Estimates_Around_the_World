@@ -1,11 +1,8 @@
 # --------------------------------- Task Summary --------------------------------- #
-# This file performs post-adjustment on the predicted 1-degree cell GDP values 
-#       from the model trained using data from 2012 to 2022.
+# This file performs post-adjustment on the predicted 1-degree cell GDP values, and propagates per-tree predictions through the same censor-rescale-aggregate pipeline to produce cell-level uncertainty quantiles and standard deviations.
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -13,25 +10,20 @@ Sys.setlocale("LC_ALL", "en_US.UTF-8")
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(exactextractr)
 library(terra)
 library(raster)
+library(matrixStats)
 
 # ------------------------------------------------------------------------------------------------------------------------------
 # Model 9.1: 1deg
@@ -68,12 +60,91 @@ land_area <- lc_full_1deg  %>%
 # load GDP
 # Note: here I also want the area in square km based on a spherical approximation of the Earth
 
-pred_1deg_with_prov_bound <- predict_data_results_1deg_with_prov_boundary %>% 
-  dplyr::select(c(cell_id, id, iso, year, unit_gdp_af_sum_rescl, pred_GCP_share_1deg, pred_GCP_share_1deg_rescaled, pred_GCP_1deg))  %>% 
-  left_join(pop)  %>% 
-  left_join(land_area)  %>% 
-  mutate(pop_density_km2 = ifelse(land_area_km2 == 0, 0, pop/land_area_km2)) %>% 
+pred_1deg_with_prov_bound <- predict_data_results_1deg_with_prov_boundary %>%
+  dplyr::select(c(tree_row_idx, cell_id, id, iso, year, unit_gdp_af_sum_rescl, pred_GCP_share_1deg, pred_GCP_share_1deg_rescaled, pred_GCP_1deg))  %>%
+  left_join(pop)  %>%
+  left_join(land_area)  %>%
+  mutate(pop_density_km2 = ifelse(land_area_km2 == 0, 0, pop/land_area_km2)) %>%
   na.omit() # there is one cell for SAU that have missing data purely because of country border geom differences from different sources, ignore it.
+
+# ---- Load tree-level predictions for uncertainty propagation ----
+load("step5_predict_and_post_adjustments/outputs/tree_preds_raw_1deg.RData")
+
+# Match rows using saved row index (na.omit may have dropped some rows)
+tree_shares_matched <- tree_preds_raw_1deg[pred_1deg_with_prov_bound$tree_row_idx, ]
+rm(tree_preds_raw_1deg); gc()
+cat(paste0("  Matched ", nrow(tree_shares_matched), " rows, ", num_trees_1deg, " trees.\n"))
+
+# Helper: propagate tree predictions through post-adjustment and compute quantiles.
+# Processes trees in column chunks to stay within memory limits.
+# Each operation (censor, rescale, multiply, aggregate) is independent per column,
+# so chunking produces identical results to processing all columns at once.
+propagate_tree_uncertainty <- function(tree_shares, pred_data, threshold, chunk_size = 100) {
+  n_trees <- ncol(tree_shares)
+
+  # Pre-compute masks and keys (shared across all tree chunks)
+  censor_mask <- pred_data$pop_density_km2 <= threshold
+  grp <- paste(pred_data$id, pred_data$year, sep = "||")
+  agg_key <- paste(pred_data$iso, pred_data$year, pred_data$cell_id, sep = "||")
+  gdp_vec <- pred_data$unit_gdp_af_sum_rescl
+
+  # Determine output row structure
+  out_names <- sort(unique(agg_key))
+  n_out <- length(out_names)
+
+  # Pre-allocate aggregated output matrix (n_cells x n_trees — much smaller than input)
+  tree_GCP_cell <- matrix(0, nrow = n_out, ncol = n_trees)
+  rownames(tree_GCP_cell) <- out_names
+
+  n_chunks <- ceiling(n_trees / chunk_size)
+  for (ch in seq_len(n_chunks)) {
+    col_start <- (ch - 1) * chunk_size + 1
+    col_end <- min(ch * chunk_size, n_trees)
+    cols <- col_start:col_end
+
+    # Extract column chunk (fresh matrix with refcount == 1)
+    ts <- tree_shares[, cols, drop = FALSE]
+
+    # 1. Censor cells below pop density threshold
+    ts[censor_mask, ] <- 0
+
+    # 2. Rescale within (id, year) groups
+    grp_sums <- rowsum(ts, grp)
+    ts <- ts / grp_sums[grp, , drop = FALSE]
+    ts[!is.finite(ts)] <- 0
+
+    # 3. Multiply by province/country GDP
+    ts <- ts * gdp_vec
+
+    # 4. Aggregate across province boundaries within (iso, year, cell_id)
+    tree_GCP_cell[, cols] <- rowsum(ts, agg_key)
+    rm(ts, grp_sums); gc()
+  }
+
+  # 5. Compute quantiles and standard deviations across trees
+  q_mat <- rowQuantiles(tree_GCP_cell, probs = c(0.01, 0.05, 0.10, 0.90, 0.95, 0.99))
+  gcp_sd <- rowSds(tree_GCP_cell)
+
+  # Exact SD of log(GDP) across trees (currency- and population-invariant)
+  log_tree_GCP <- log(tree_GCP_cell)
+  log_tree_GCP[!is.finite(log_tree_GCP)] <- NA
+  gcp_sd_log <- rowSds(log_tree_GCP, na.rm = TRUE)
+  rm(log_tree_GCP, tree_GCP_cell); gc()
+
+  # Parse aggregation key back to identifiers
+  parts <- strsplit(out_names, "||", fixed = TRUE)
+
+  data.frame(
+    iso = sapply(parts, `[`, 1),
+    year = as.integer(sapply(parts, `[`, 2)),
+    cell_id = sapply(parts, `[`, 3),
+    GCP_tree_sd = gcp_sd,
+    GCP_sd_log_gdp = gcp_sd_log,
+    GCP_q01 = q_mat[, 1], GCP_q05 = q_mat[, 2], GCP_q10 = q_mat[, 3],
+    GCP_q90 = q_mat[, 4], GCP_q95 = q_mat[, 5], GCP_q99 = q_mat[, 6],
+    stringsAsFactors = FALSE
+  )
+}
 
 # ------------------------------------------------------------------------------------------------------------------------------
 # let's first try use 0 as threshold (meaning no extra adjust except for population = 0)
@@ -106,6 +177,11 @@ organized_pred_1deg_postadjust_pop_dens_no_extra_adjust <- pred_1deg_with_prov_b
          cell_size = "1-deg by 1-deg")  %>% 
   left_join(deg1_geometry)
 
+# Add tree-level uncertainty for no extra adjust
+unc_no_extra <- propagate_tree_uncertainty(tree_shares_matched, pred_1deg_with_prov_bound, threshold = 0)
+organized_pred_1deg_postadjust_pop_dens_no_extra_adjust <- organized_pred_1deg_postadjust_pop_dens_no_extra_adjust %>%
+  left_join(unc_no_extra, by = c("iso", "year", "cell_id"))
+
 # 0.01 next
 
 pred_1deg_with_prov_bound_postadjust_pop_dens_0_01_adjust <- pred_1deg_with_prov_bound  %>% 
@@ -127,8 +203,13 @@ organized_pred_1deg_postadjust_pop_dens_0_01_adjust <- pred_1deg_with_prov_bound
   rename(predicted_GCP = pred_GCP_1deg_no_prov_bound)  %>%
   dplyr::select(c(cell_id, iso, year, predicted_GCP, is_cell_censored))  %>%
   mutate(method = "post-adjust zero GDP for pop density <= 0.01 (population per cell land area in km2)",
-         cell_size = "1-deg by 1-deg")  %>% 
+         cell_size = "1-deg by 1-deg")  %>%
   left_join(deg1_geometry)
+
+# Add tree-level uncertainty for 0.01 threshold
+unc_0_01 <- propagate_tree_uncertainty(tree_shares_matched, pred_1deg_with_prov_bound, threshold = 0.01)
+organized_pred_1deg_postadjust_pop_dens_0_01_adjust <- organized_pred_1deg_postadjust_pop_dens_0_01_adjust %>%
+  left_join(unc_0_01, by = c("iso", "year", "cell_id"))
 
 # 0.02 next
 pred_1deg_with_prov_bound_postadjust_pop_dens_0_02_adjust <- pred_1deg_with_prov_bound  %>% 
@@ -150,8 +231,13 @@ organized_pred_1deg_postadjust_pop_dens_0_02_adjust <- pred_1deg_with_prov_bound
   rename(predicted_GCP = pred_GCP_1deg_no_prov_bound)  %>%
   dplyr::select(c(cell_id, iso, year, predicted_GCP, is_cell_censored))  %>%
   mutate(method = "post-adjust zero GDP for pop density <= 0.02 (population per cell land area in km2)",
-         cell_size = "1-deg by 1-deg")  %>% 
+         cell_size = "1-deg by 1-deg")  %>%
   left_join(deg1_geometry)
+
+# Add tree-level uncertainty for 0.02 threshold
+unc_0_02 <- propagate_tree_uncertainty(tree_shares_matched, pred_1deg_with_prov_bound, threshold = 0.02)
+organized_pred_1deg_postadjust_pop_dens_0_02_adjust <- organized_pred_1deg_postadjust_pop_dens_0_02_adjust %>%
+  left_join(unc_0_02, by = c("iso", "year", "cell_id"))
 
 # 0.05 next
 pred_1deg_with_prov_bound_postadjust_pop_dens_0_05_adjust <- pred_1deg_with_prov_bound  %>% 
@@ -173,8 +259,16 @@ organized_pred_1deg_postadjust_pop_dens_0_05_adjust <- pred_1deg_with_prov_bound
   rename(predicted_GCP = pred_GCP_1deg_no_prov_bound)  %>%
   dplyr::select(c(cell_id, iso, year, predicted_GCP, is_cell_censored))  %>%
   mutate(method = "post-adjust zero GDP for pop density <= 0.05 (population per cell land area in km2)",
-         cell_size = "1-deg by 1-deg")  %>% 
+         cell_size = "1-deg by 1-deg")  %>%
   left_join(deg1_geometry)
+
+# Add tree-level uncertainty for 0.05 threshold
+unc_0_05 <- propagate_tree_uncertainty(tree_shares_matched, pred_1deg_with_prov_bound, threshold = 0.05)
+organized_pred_1deg_postadjust_pop_dens_0_05_adjust <- organized_pred_1deg_postadjust_pop_dens_0_05_adjust %>%
+  left_join(unc_0_05, by = c("iso", "year", "cell_id"))
+
+# Free tree memory now that all thresholds are computed
+rm(tree_shares_matched, unc_no_extra, unc_0_01, unc_0_02, unc_0_05); gc()
 
 # ------------------------------------------------------------------------------------------------------------------------------
 # obtain each 1 deg cell population
@@ -183,7 +277,7 @@ national_population <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data
   as.data.frame()  %>% 
   dplyr::select(c(iso, year, national_population))  %>% 
   distinct(iso, year, national_population, .keep_all = TRUE)  %>% 
-  filter(year <= 202) 
+  filter(year <= 2022) 
 
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/land_pop_extracted_region_level_1deg.RData")
 pop_cell_1deg <- land_pop_extracted_region_level_1deg  %>%
@@ -213,32 +307,33 @@ save(pop_cell_1deg, file = "step5_predict_and_post_adjustments/outputs/predict_d
 load("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/pop_cell_1deg.RData")
 
 # no extra adjustment
-GDPC_1deg_postadjust_pop_dens_no_extra_adjust <- organized_pred_1deg_postadjust_pop_dens_no_extra_adjust  %>% 
-  left_join(pop_cell_1deg) %>% 
+GDPC_1deg_postadjust_pop_dens_no_extra_adjust <- organized_pred_1deg_postadjust_pop_dens_no_extra_adjust  %>%
+  left_join(pop_cell_1deg) %>%
   mutate(predicted_GCP = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP)) %>% # in case after rescaling the pop, some places with very few population turns to 0
-  mutate(cell_GDPC = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP/pop_cell_rescaled))  %>% 
-  dplyr::select(-c(pop_cell))  %>% 
+  mutate(cell_GDPC = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP/pop_cell_rescaled))  %>%
+  mutate(
+    GDPC_tree_sd = ifelse(pop_cell_rescaled == 0, 0, GCP_tree_sd / pop_cell_rescaled),
+    GDPC_q01 = ifelse(pop_cell_rescaled == 0, 0, GCP_q01 / pop_cell_rescaled),
+    GDPC_q05 = ifelse(pop_cell_rescaled == 0, 0, GCP_q05 / pop_cell_rescaled),
+    GDPC_q10 = ifelse(pop_cell_rescaled == 0, 0, GCP_q10 / pop_cell_rescaled),
+    GDPC_q90 = ifelse(pop_cell_rescaled == 0, 0, GCP_q90 / pop_cell_rescaled),
+    GDPC_q95 = ifelse(pop_cell_rescaled == 0, 0, GCP_q95 / pop_cell_rescaled),
+    GDPC_q99 = ifelse(pop_cell_rescaled == 0, 0, GCP_q99 / pop_cell_rescaled),
+    GCP_tree_sd = ifelse(pop_cell_rescaled == 0, 0, GCP_tree_sd),
+    GCP_sd_log_gdp = ifelse(pop_cell_rescaled == 0, 0, GCP_sd_log_gdp),
+    GCP_q01 = ifelse(pop_cell_rescaled == 0, 0, GCP_q01),
+    GCP_q05 = ifelse(pop_cell_rescaled == 0, 0, GCP_q05),
+    GCP_q10 = ifelse(pop_cell_rescaled == 0, 0, GCP_q10),
+    GCP_q90 = ifelse(pop_cell_rescaled == 0, 0, GCP_q90),
+    GCP_q95 = ifelse(pop_cell_rescaled == 0, 0, GCP_q95),
+    GCP_q99 = ifelse(pop_cell_rescaled == 0, 0, GCP_q99)
+  )  %>%
+  dplyr::select(-c(pop_cell))  %>%
   rename(pop_cell = pop_cell_rescaled)
 
 save(GDPC_1deg_postadjust_pop_dens_no_extra_adjust, file = "step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_no_extra_adjust.RData")
 
-# also generate csv file, instead of giving geometry, give longitude and latitude of the bottom-left corner of each cell
-# just_grid_1deg <- read_sf("/share/rossihansberglab/Nightlights_GDP/replication_packages/step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_1degree.gpkg")
-
-# just_grid_1deg$longitude <- NA
-# just_grid_1deg$latitude <- NA
-
-# # Extract the bottom-left point for each cell
-# for (i in 1:nrow(just_grid_1deg)) {
-#     bbox <- st_bbox(just_grid_1deg[i, ])
-#     just_grid_1deg$longitude[i] <- bbox$xmin
-#     just_grid_1deg$latitude[i] <- bbox$ymin
-# }
-
-# just_grid_1deg_with_lon_lat <- just_grid_1deg  %>% as.data.frame()  %>% dplyr::select(-c(geom))
-# write.csv(just_grid_1deg_with_lon_lat, file = "step5_predict_and_post_adjustments/outputs/just_grid_1deg_with_lon_lat.csv", row.names = FALSE)
-
-just_grid_1deg <- read.csv("step5_predict_and_post_adjustments/outputs/just_grid_1deg_with_lon_lat.csv")
+just_grid_1deg <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_1deg_with_lon_lat.csv")
 
 GDPC_1deg_postadjust_pop_dens_no_extra_adjust_csv <- GDPC_1deg_postadjust_pop_dens_no_extra_adjust  %>% 
   left_join(just_grid_1deg  %>% mutate(cell_id = as.character(cell_id)))  %>% 
@@ -246,13 +341,29 @@ GDPC_1deg_postadjust_pop_dens_no_extra_adjust_csv <- GDPC_1deg_postadjust_pop_de
   dplyr::select(-c(geom))
 write.csv(GDPC_1deg_postadjust_pop_dens_no_extra_adjust_csv, file = "step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_no_extra_adjust.csv", row.names = FALSE)
 
-
 # 0.01 threshold
-GDPC_1deg_postadjust_pop_dens_0_01_adjust <- organized_pred_1deg_postadjust_pop_dens_0_01_adjust  %>% 
-  left_join(pop_cell_1deg) %>% 
+GDPC_1deg_postadjust_pop_dens_0_01_adjust <- organized_pred_1deg_postadjust_pop_dens_0_01_adjust  %>%
+  left_join(pop_cell_1deg) %>%
   mutate(predicted_GCP = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP)) %>%
-  mutate(cell_GDPC = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP/pop_cell_rescaled))  %>% 
-  dplyr::select(-c(pop_cell))  %>% 
+  mutate(cell_GDPC = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP/pop_cell_rescaled))  %>%
+  mutate(
+    GDPC_tree_sd = ifelse(pop_cell_rescaled == 0, 0, GCP_tree_sd / pop_cell_rescaled),
+    GDPC_q01 = ifelse(pop_cell_rescaled == 0, 0, GCP_q01 / pop_cell_rescaled),
+    GDPC_q05 = ifelse(pop_cell_rescaled == 0, 0, GCP_q05 / pop_cell_rescaled),
+    GDPC_q10 = ifelse(pop_cell_rescaled == 0, 0, GCP_q10 / pop_cell_rescaled),
+    GDPC_q90 = ifelse(pop_cell_rescaled == 0, 0, GCP_q90 / pop_cell_rescaled),
+    GDPC_q95 = ifelse(pop_cell_rescaled == 0, 0, GCP_q95 / pop_cell_rescaled),
+    GDPC_q99 = ifelse(pop_cell_rescaled == 0, 0, GCP_q99 / pop_cell_rescaled),
+    GCP_tree_sd = ifelse(pop_cell_rescaled == 0, 0, GCP_tree_sd),
+    GCP_sd_log_gdp = ifelse(pop_cell_rescaled == 0, 0, GCP_sd_log_gdp),
+    GCP_q01 = ifelse(pop_cell_rescaled == 0, 0, GCP_q01),
+    GCP_q05 = ifelse(pop_cell_rescaled == 0, 0, GCP_q05),
+    GCP_q10 = ifelse(pop_cell_rescaled == 0, 0, GCP_q10),
+    GCP_q90 = ifelse(pop_cell_rescaled == 0, 0, GCP_q90),
+    GCP_q95 = ifelse(pop_cell_rescaled == 0, 0, GCP_q95),
+    GCP_q99 = ifelse(pop_cell_rescaled == 0, 0, GCP_q99)
+  )  %>%
+  dplyr::select(-c(pop_cell))  %>%
   rename(pop_cell = pop_cell_rescaled)
 
 # also generate csv file, instead of giving geometry, give longitude and latitude of the bottom-left corner of each cell
@@ -262,13 +373,29 @@ GDPC_1deg_postadjust_pop_dens_0_01_adjust_csv <- GDPC_1deg_postadjust_pop_dens_0
   dplyr::select(-c(geom))
 write.csv(GDPC_1deg_postadjust_pop_dens_0_01_adjust_csv, file = "step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_0_01_adjust.csv", row.names = FALSE)
 
-
 # 0.02 threshold
-GDPC_1deg_postadjust_pop_dens_0_02_adjust <- organized_pred_1deg_postadjust_pop_dens_0_02_adjust  %>% 
-  left_join(pop_cell_1deg) %>% 
+GDPC_1deg_postadjust_pop_dens_0_02_adjust <- organized_pred_1deg_postadjust_pop_dens_0_02_adjust  %>%
+  left_join(pop_cell_1deg) %>%
   mutate(predicted_GCP = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP)) %>%
-  mutate(cell_GDPC = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP/pop_cell_rescaled))  %>% 
-  dplyr::select(-c(pop_cell))  %>% 
+  mutate(cell_GDPC = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP/pop_cell_rescaled))  %>%
+  mutate(
+    GDPC_tree_sd = ifelse(pop_cell_rescaled == 0, 0, GCP_tree_sd / pop_cell_rescaled),
+    GDPC_q01 = ifelse(pop_cell_rescaled == 0, 0, GCP_q01 / pop_cell_rescaled),
+    GDPC_q05 = ifelse(pop_cell_rescaled == 0, 0, GCP_q05 / pop_cell_rescaled),
+    GDPC_q10 = ifelse(pop_cell_rescaled == 0, 0, GCP_q10 / pop_cell_rescaled),
+    GDPC_q90 = ifelse(pop_cell_rescaled == 0, 0, GCP_q90 / pop_cell_rescaled),
+    GDPC_q95 = ifelse(pop_cell_rescaled == 0, 0, GCP_q95 / pop_cell_rescaled),
+    GDPC_q99 = ifelse(pop_cell_rescaled == 0, 0, GCP_q99 / pop_cell_rescaled),
+    GCP_tree_sd = ifelse(pop_cell_rescaled == 0, 0, GCP_tree_sd),
+    GCP_sd_log_gdp = ifelse(pop_cell_rescaled == 0, 0, GCP_sd_log_gdp),
+    GCP_q01 = ifelse(pop_cell_rescaled == 0, 0, GCP_q01),
+    GCP_q05 = ifelse(pop_cell_rescaled == 0, 0, GCP_q05),
+    GCP_q10 = ifelse(pop_cell_rescaled == 0, 0, GCP_q10),
+    GCP_q90 = ifelse(pop_cell_rescaled == 0, 0, GCP_q90),
+    GCP_q95 = ifelse(pop_cell_rescaled == 0, 0, GCP_q95),
+    GCP_q99 = ifelse(pop_cell_rescaled == 0, 0, GCP_q99)
+  )  %>%
+  dplyr::select(-c(pop_cell))  %>%
   rename(pop_cell = pop_cell_rescaled)
 
 # also generate csv file, instead of giving geometry, give longitude and latitude of the bottom-left corner of each cell
@@ -278,13 +405,29 @@ GDPC_1deg_postadjust_pop_dens_0_02_adjust_csv <- GDPC_1deg_postadjust_pop_dens_0
   dplyr::select(-c(geom))
 write.csv(GDPC_1deg_postadjust_pop_dens_0_02_adjust_csv, file = "step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_0_02_adjust.csv", row.names = FALSE)
 
-
 # 0.05 threshold
-GDPC_1deg_postadjust_pop_dens_0_05_adjust <- organized_pred_1deg_postadjust_pop_dens_0_05_adjust  %>% 
-  left_join(pop_cell_1deg) %>% 
+GDPC_1deg_postadjust_pop_dens_0_05_adjust <- organized_pred_1deg_postadjust_pop_dens_0_05_adjust  %>%
+  left_join(pop_cell_1deg) %>%
   mutate(predicted_GCP = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP)) %>%
-  mutate(cell_GDPC = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP/pop_cell_rescaled))  %>% 
-  dplyr::select(-c(pop_cell))  %>% 
+  mutate(cell_GDPC = ifelse(pop_cell_rescaled == 0, 0, predicted_GCP/pop_cell_rescaled))  %>%
+  mutate(
+    GDPC_tree_sd = ifelse(pop_cell_rescaled == 0, 0, GCP_tree_sd / pop_cell_rescaled),
+    GDPC_q01 = ifelse(pop_cell_rescaled == 0, 0, GCP_q01 / pop_cell_rescaled),
+    GDPC_q05 = ifelse(pop_cell_rescaled == 0, 0, GCP_q05 / pop_cell_rescaled),
+    GDPC_q10 = ifelse(pop_cell_rescaled == 0, 0, GCP_q10 / pop_cell_rescaled),
+    GDPC_q90 = ifelse(pop_cell_rescaled == 0, 0, GCP_q90 / pop_cell_rescaled),
+    GDPC_q95 = ifelse(pop_cell_rescaled == 0, 0, GCP_q95 / pop_cell_rescaled),
+    GDPC_q99 = ifelse(pop_cell_rescaled == 0, 0, GCP_q99 / pop_cell_rescaled),
+    GCP_tree_sd = ifelse(pop_cell_rescaled == 0, 0, GCP_tree_sd),
+    GCP_sd_log_gdp = ifelse(pop_cell_rescaled == 0, 0, GCP_sd_log_gdp),
+    GCP_q01 = ifelse(pop_cell_rescaled == 0, 0, GCP_q01),
+    GCP_q05 = ifelse(pop_cell_rescaled == 0, 0, GCP_q05),
+    GCP_q10 = ifelse(pop_cell_rescaled == 0, 0, GCP_q10),
+    GCP_q90 = ifelse(pop_cell_rescaled == 0, 0, GCP_q90),
+    GCP_q95 = ifelse(pop_cell_rescaled == 0, 0, GCP_q95),
+    GCP_q99 = ifelse(pop_cell_rescaled == 0, 0, GCP_q99)
+  )  %>%
+  dplyr::select(-c(pop_cell))  %>%
   rename(pop_cell = pop_cell_rescaled)
 
 # also generate csv file, instead of giving geometry, give longitude and latitude of the bottom-left corner of each cell

@@ -1,38 +1,25 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to compare the predicted cell GDP with true cell GDP for China.
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file compares the predicted cell GDP with the true cell GDP for China.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
-rm(list = ls())
-gc()
-
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(RColorBrewer)
 library(terra)
 library(exactextractr)
@@ -150,7 +137,6 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
 
 ggsave("step6_test_model_under_shocks/outputs/CHN_test/log_level_change_r2.pdf", plot = combined_plot, width = 16, height = 10, bg = "white")
 
-
 # Wuhan time series
 plot1 <- ggplot() +
   geom_point(data = china_df %>% filter(cell_id == 21535), 
@@ -190,7 +176,6 @@ plot1 <- ggplot() +
 ggsave("step6_test_model_under_shocks/outputs/CHN_test/wuhan_time_series.pdf", 
        plot = plot1,
        bg = "white", width = 10)
-
 
 # Wuhan time series - Log Changes
 # First, calculate log changes for Wuhan cell
@@ -295,7 +280,6 @@ change <- china_df %>%
   dplyr::select(iso, prov_id, cell_id, year, grate_pred, grate_true, pred_GCP_1deg) %>%
   filter(year != 2012) %>% 
   filter(is.finite(grate_pred) & is.finite(grate_true))
-
 
 yr_group_chan_pred <- change %>% 
   mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 

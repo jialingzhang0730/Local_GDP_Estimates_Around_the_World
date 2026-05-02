@@ -1,6 +1,6 @@
 
-# --------------- Task Summary--------------- #
-# This file runs all scripts, replicate the whole project. Before starting:
+# --------------------------------- Task Summary --------------------------------- #
+# This file runs all scripts to replicate the whole project. Before starting:
 #
 # 1. Make sure you have QGIS installed on your system, and it should be accessible by the R package "qgisprocess":
 #   QGIS is a free and open-source software available on Windows, macOS, Linux, FreeBSD, OpenBSD, Android, and iOS. 
@@ -11,56 +11,53 @@
 #       For Mac users, go to ``macos/ltr/qgis\_ltr\_final-3\_34\_11\_20240913\_170535.dmg". 
 #
 # 2. Make sure you have R version 4.2.1 installed on your system
+#
+# 3. Set R's working directory to the root of this replication package before sourcing
+#    this script (e.g., via the IDE's session menu or `setwd()` at the prompt).
 # ------------------------------------ #
 
-# Clean environment and manage memory
-rm(list = ls())
-gc()
-
-# Change your directory here:
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP")
-
 # step0: prepare R packages
-source("version2_year2012_2022/R_package_needed.R", echo = TRUE)
+source("R_package_needed.R", echo = TRUE)
 
-# step1: prepare main gis data (Skip this step if you have already run this step for "version1_year2012_2021")
-source("version2_year2012_2022/step1_obtain_gis_data/process_geom.R", echo = TRUE)
+# step1: prepare main gis data (skip if these geometry outputs are already on disk).
+# See README §28 for the list of external geometry inputs that step1 expects.
+source("step1_obtain_gis_data/process_geom.R", echo = TRUE)
 
 # step2: obtain gdp data
-source("version2_year2012_2022/step2_obtain_gdp_data/1_RUS.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/2_BRA.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/3_oecd.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/4_USA.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/5_CHN.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/6_IND.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/7_KGZ.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/8_PHL.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/9_KAZ.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/10_clean_national_data.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/11_certain_developing_isos_from_DOSE.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/12_merge_gdp_data.R", echo = TRUE)
-source("version2_year2012_2022/step2_obtain_gdp_data/13_build_world_poly.R", echo = TRUE)
+source("step2_obtain_gdp_data/1_RUS.R", echo = TRUE)
+source("step2_obtain_gdp_data/2_BRA.R", echo = TRUE)
+source("step2_obtain_gdp_data/3_oecd.R", echo = TRUE)
+source("step2_obtain_gdp_data/4_USA.R", echo = TRUE)
+source("step2_obtain_gdp_data/5_CHN.R", echo = TRUE)
+source("step2_obtain_gdp_data/6_IND.R", echo = TRUE)
+source("step2_obtain_gdp_data/7_KGZ.R", echo = TRUE)
+source("step2_obtain_gdp_data/8_PHL.R", echo = TRUE)
+source("step2_obtain_gdp_data/9_KAZ.R", echo = TRUE)
+source("step2_obtain_gdp_data/10_clean_national_data.R", echo = TRUE)
+source("step2_obtain_gdp_data/11_certain_developing_isos_from_DOSE.R", echo = TRUE)
+source("step2_obtain_gdp_data/12_merge_gdp_data.R", echo = TRUE)
+source("step2_obtain_gdp_data/13_build_world_poly.R", echo = TRUE)
 
 # step3: prepare dataset for training and prediction
 source("step3_obtain_cell_level_GDP_and_predictors_data/1_regional_GDP_training_sample.R", echo = TRUE)
 source("step3_obtain_cell_level_GDP_and_predictors_data/2_obtain_county_population.R", echo = TRUE)
 source("step3_obtain_cell_level_GDP_and_predictors_data/3_world_cell.R", echo = TRUE)
-source("step3_obtain_cell_level_GDP_and_predictors_data/4_get_cell_true_GDP.R", echo = TRUE)
+source("step3_obtain_cell_level_GDP_and_predictors_data/4_get_true_cell_GDP.R", echo = TRUE)
 
 if (Sys.which("qsub") != "") {
-  system("qsub step3_obtain_cell_level_GDP_and_predictors_data/5_land_pop_cell_extracted.sh", intern = FALSE)
+  system("qsub -W block=true step3_obtain_cell_level_GDP_and_predictors_data/5_land_pop_cell_extracted.sh", intern = FALSE)
 } else {
   source("step3_obtain_cell_level_GDP_and_predictors_data/5_land_pop_cell_extracted.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step3_obtain_cell_level_GDP_and_predictors_data/6_landcover_cell_extracted.sh", intern = FALSE)
+  system("qsub -W block=true step3_obtain_cell_level_GDP_and_predictors_data/6_landcover_cell_extracted.sh", intern = FALSE)
 } else {
   source("step3_obtain_cell_level_GDP_and_predictors_data/6_landcover_cell_extracted.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step3_obtain_cell_level_GDP_and_predictors_data/7_NPP_cell_extracted.sh", intern = FALSE)
+  system("qsub -W block=true step3_obtain_cell_level_GDP_and_predictors_data/7_NPP_cell_extracted.sh", intern = FALSE)
 } else {
   source("step3_obtain_cell_level_GDP_and_predictors_data/7_NPP_cell_extracted.R", echo = TRUE)
 }
@@ -68,28 +65,28 @@ if (Sys.which("qsub") != "") {
 source("step3_obtain_cell_level_GDP_and_predictors_data/8_gas_flare_spot.R", echo = TRUE)
 
 if (Sys.which("qsub") != "") {
-  system("qsub step3_obtain_cell_level_GDP_and_predictors_data/9_NTL_cell_extracted_temp_files_genr.sh", intern = FALSE)
+  system("qsub -W block=true step3_obtain_cell_level_GDP_and_predictors_data/9_NTL_cell_extracted_temp_files_genr.sh", intern = FALSE)
 } else {
   source("step3_obtain_cell_level_GDP_and_predictors_data/9_NTL_cell_extracted_temp_files_genr.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("bash step3_obtain_cell_level_GDP_and_predictors_data/10_NTL_cell_extracted.sh", intern = FALSE)
+  system("qsub -W block=true step3_obtain_cell_level_GDP_and_predictors_data/10_NTL_cell_extracted.sh", intern = FALSE)
 } else {
-  system("bash step3_obtain_cell_level_GDP_and_predictors_data/10_NTL_cell_extracted_no_qsub.sh", intern = FALSE)
+  source("step3_obtain_cell_level_GDP_and_predictors_data/10_NTL_cell_extracted.R", echo = TRUE)
 }
 
-source("step3_obtain_cell_level_GDP_and_predictors_data/11_NTL_cell_extracted_comb_years_sep.R", echo = TRUE)
+source("step3_obtain_cell_level_GDP_and_predictors_data/11_NTL_cell_extracted_comp_years_sep.R", echo = TRUE)
 source("step3_obtain_cell_level_GDP_and_predictors_data/12_ruggedness_cell_extracted.R", echo = TRUE)
 
 if (Sys.which("qsub") != "") {
-  system("qsub step3_obtain_cell_level_GDP_and_predictors_data/13_CO2_bio_cell_extracted.sh", intern = FALSE)
+  system("qsub -W block=true step3_obtain_cell_level_GDP_and_predictors_data/13_CO2_bio_cell_extracted.sh", intern = FALSE)
 } else {
   source("step3_obtain_cell_level_GDP_and_predictors_data/13_CO2_bio_cell_extracted.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step3_obtain_cell_level_GDP_and_predictors_data/14_CO2_non_org_cell_extracted.sh", intern = FALSE)
+  system("qsub -W block=true step3_obtain_cell_level_GDP_and_predictors_data/14_CO2_non_org_cell_extracted.sh", intern = FALSE)
 } else {
   source("step3_obtain_cell_level_GDP_and_predictors_data/14_CO2_non_org_cell_extracted.R", echo = TRUE)
 }
@@ -97,55 +94,79 @@ if (Sys.which("qsub") != "") {
 source("step3_obtain_cell_level_GDP_and_predictors_data/15_NTL_urban_cropland_cell_extract_prepare.R", echo = TRUE)
 
 if (Sys.which("qsub") != "") {
-  system("bash step3_obtain_cell_level_GDP_and_predictors_data/16_NTL_urban_cropland_cell_extract.sh", intern = FALSE)
+  system("qsub -W block=true step3_obtain_cell_level_GDP_and_predictors_data/16_NTL_urban_cropland_cell_extract.sh", intern = FALSE)
 } else {
-  system("bash step3_obtain_cell_level_GDP_and_predictors_data/16_NTL_urban_cropland_cell_extract_no_qsub.sh", intern = FALSE)
+  source("step3_obtain_cell_level_GDP_and_predictors_data/16_NTL_urban_cropland_cell_extract.R", echo = TRUE)
 }
 
-source("step3_obtain_cell_level_GDP_and_predictors_data/17_NTL_urban_cropland_cell_extracted", echo = TRUE)
-source("step3_obtain_cell_level_GDP_and_predictors_data/18_pop_urban_cropland_extracted", echo = TRUE)
-source("step3_obtain_cell_level_GDP_and_predictors_data/19_new_merge_all_predictors_cell", echo = TRUE)
+source("step3_obtain_cell_level_GDP_and_predictors_data/17_NTL_urban_cropland_cell_extracted.R", echo = TRUE)
+source("step3_obtain_cell_level_GDP_and_predictors_data/18_pop_urban_cropland_extracted.R", echo = TRUE)
+source("step3_obtain_cell_level_GDP_and_predictors_data/19_merge_all_predictors_cell.R", echo = TRUE)
 
 # step4: train the models
-source("step4_benchmark_model/1_obtain_train_validation_dataset_new.R", echo = TRUE)
+source("step4_benchmark_model/1_obtain_train_validation_dataset.R", echo = TRUE)
 
 if (Sys.which("qsub") != "") {
-  system("qsub step4_benchmark_model/2_put_all_isos_to_train_1deg.sh", intern = FALSE)
+  system("qsub -W block=true step4_benchmark_model/2_put_all_isos_to_train_1deg.sh", intern = FALSE)
 } else {
   source("step4_benchmark_model/2_put_all_isos_to_train_1deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step4_benchmark_model/2_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
+  system("qsub -W block=true step4_benchmark_model/2_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step4_benchmark_model/2_put_all_isos_to_train_1deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step4_benchmark_model/2_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
+  system("qsub -W block=true step4_benchmark_model/2_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
 } else {
   source("step4_benchmark_model/2_put_all_isos_to_train_0_5deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step4_benchmark_model/2_put_all_isos_to_train_0_5deg_up_to_2019.sh", intern = FALSE)
+  system("qsub -W block=true step4_benchmark_model/2_put_all_isos_to_train_0_5deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step4_benchmark_model/2_put_all_isos_to_train_0_5deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step4_benchmark_model/2_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
+  system("qsub -W block=true step4_benchmark_model/2_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
 } else {
   source("step4_benchmark_model/2_put_all_isos_to_train_0_25deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step4_benchmark_model/2_put_all_isos_to_train_0_25deg_up_to_2019.sh", intern = FALSE)
+  system("qsub -W block=true step4_benchmark_model/2_put_all_isos_to_train_0_25deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step4_benchmark_model/2_put_all_isos_to_train_0_25deg_up_to_2019.R", echo = TRUE)
 }
 
 source("step4_benchmark_model/3_analyze_rf_models_trained_use_all_isos.R", echo = TRUE)
+
+# step4 (continued): robustness training (Online Appendix Sections 7.4, 8.2, 8.3)
+
+# Section 8.2: Spatial block cross-validation
+source("step4_benchmark_model/5_spatial_block_cv_training.R", echo = TRUE)
+
+# Section 7.4: Performance dropping individual predictors (4 families x 3 resolutions)
+for (folder in c("model_exclude_pop", "model_exclude_lags", "model_exclude_co2", "model_exclude_national_gdp_pc")) {
+  for (deg in c("1deg", "0_5deg", "0_25deg")) {
+    source(sprintf("step7_robust_analysis/%s/1_put_all_isos_to_train_%s.R", folder, deg),
+           echo = TRUE)
+  }
+}
+
+# Section 8.3: Performance without GDP rescaling
+for (deg in c("1deg", "0_5deg", "0_25deg")) {
+  if (Sys.which("qsub") != "") {
+    system(sprintf("qsub -W block=true step4_benchmark_model/2_put_all_isos_to_train_%s_no_rescaling.sh", deg),
+           intern = FALSE)
+  } else {
+    source(sprintf("step4_benchmark_model/2_put_all_isos_to_train_%s_no_rescaling.R", deg),
+           echo = TRUE)
+  }
+}
 
 # step5: predictions, obtain the results
 source("step5_predict_and_post_adjustments/1_predict_model_trained_all_years.R", echo = TRUE)
@@ -154,15 +175,21 @@ source("step5_predict_and_post_adjustments/2_analyze_diff_models.R", echo = TRUE
 source("step5_predict_and_post_adjustments/2_analyze_diff_models_extension_log_change.R", echo = TRUE)
 source("step5_predict_and_post_adjustments/3_obtain_country_xdeg_intersect_geom.R", echo = TRUE)
 source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_1deg.R", echo = TRUE)
-source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_1deg_upto2019.R", echo = TRUE)
+source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_1deg_up_to_2019.R", echo = TRUE)
 source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_0_5deg.R", echo = TRUE)
-source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_0_5deg_upto2019.R", echo = TRUE)
+source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_0_5deg_up_to_2019.R", echo = TRUE)
 source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_0_25deg.R", echo = TRUE)
-source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_0_25deg_upto2019.R", echo = TRUE)
+source("step5_predict_and_post_adjustments/4_post_adjustment_filter_out_low_pop_density_0_25deg_up_to_2019.R", echo = TRUE)
 source("step5_predict_and_post_adjustments/4_post_adjustment_how_many_cells_affected.R", echo = TRUE)
 source("step5_predict_and_post_adjustments/5_example_plot.R", echo = TRUE)
 source("step5_predict_and_post_adjustments/6_check_not_just_pop_distr.R", echo = TRUE)
 source("step5_predict_and_post_adjustments/7_trans_to_other_GDP_units.R", echo = TRUE) # this file generates the final datasets
+
+# step5 (continued): tree-level uncertainty maps, tables, and out-of-sample log-error diagnostics
+#   (Online Appendix Sections 10 and 11)
+source("step5_predict_and_post_adjustments/8_uncertainty_maps.R", echo = TRUE)
+source("step5_predict_and_post_adjustments/9_uncertainty_sd_table.R", echo = TRUE)
+source("step5_predict_and_post_adjustments/11_uncertainty_distribution_plots.R", echo = TRUE)
 
 # step6: test model performance under shocks
 source("step6_test_model_under_shocks/1_true_cell_GDP_CHN.R", echo = TRUE)
@@ -171,25 +198,25 @@ source("step6_test_model_under_shocks/3_check_training_isos_predictions_log_chan
 
 # step7.1: robustness check, tune the hyperparameters by minimizing Mean Square Error (MSE)
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_1deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_1deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_1deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_1deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_0_5deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_tune_MSE/1_put_all_isos_to_train_0_25deg.R", echo = TRUE)
 }
@@ -200,25 +227,25 @@ source("step7_robust_analysis/model_tune_MSE/4_generate_variable_importance_scor
 
 # step7.2: robustness check, train the model without developing countries
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_1deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_1deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_1deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_1deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_0_5deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_developing/1_put_all_isos_to_train_0_25deg.R", echo = TRUE)
 }
@@ -229,25 +256,25 @@ source("step7_robust_analysis/model_wo_developing/4_generate_variable_importance
 
 # step7.3: robustness check, train the model without assigning weights to balance data from developed countries and developing countries
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_1deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_1deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_1deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_1deg_up_to_2019.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_1deg_up_to_2019.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_0_5deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_0_5deg.R", echo = TRUE)
 }
 
 if (Sys.which("qsub") != "") {
-  system("qsub step7_robust_analysis/model_wo_weights/1_tuning_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
+  system("qsub -W block=true step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_0_25deg.sh", intern = FALSE)
 } else {
   source("step7_robust_analysis/model_wo_weights/1_put_all_isos_to_train_0_25deg.R", echo = TRUE)
 }
@@ -255,3 +282,15 @@ if (Sys.which("qsub") != "") {
 source("step7_robust_analysis/model_wo_weights/2_obtain_predictions.R", echo = TRUE)
 source("step7_robust_analysis/model_wo_weights/3_compare_with_benchmark_model.R", echo = TRUE)
 source("step7_robust_analysis/model_wo_weights/4_generate_variable_importance_scores.R", echo = TRUE)
+
+# step7.4: prediction accuracy in challenging geographic settings (Online Appendix Section 9)
+
+# Section 9.1: Border discontinuity
+source("step7_robust_analysis/border_discontinuity/1_border_discontinuity_robustness.R", echo = TRUE)
+
+# Sections 9.2 and 9.3: Cropland proportion (levels and annual changes)
+source("step7_robust_analysis/cropland/1_agriculture_robustness.R", echo = TRUE)
+source("step7_robust_analysis/cropland/3_agriculture_robustness_changes.R", echo = TRUE)
+
+# Section 9.4: Transport corridors
+source("step7_robust_analysis/transport_corridors/1_transport_corridor_robustness.R", echo = TRUE)

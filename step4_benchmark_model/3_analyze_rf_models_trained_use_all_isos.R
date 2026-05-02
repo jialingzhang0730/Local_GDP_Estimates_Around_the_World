@@ -8,6 +8,7 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -172,9 +173,9 @@ R2_chan_1deg_all_train <- annual_chan %>%
                 ~ ifelse(is.na(.), NA, sprintf("%.2f%%", . * 100))))   
 
 save_latex_stargazer <- function(df, filename) {
-  
+
   colnames(df) <- gsub("&", "\\&", colnames(df), fixed = TRUE)
-  
+
   stargazer(df, summary = FALSE, rownames = FALSE, type = "latex", out = filename,
             title = "Table Title", label = "tab:title", 
             digits = 3, style = "default", align = TRUE)
@@ -183,7 +184,6 @@ save_latex_stargazer <- function(df, filename) {
 save_latex_stargazer(R2_1deg_all_train, "step4_benchmark_model/outputs/R2_1deg_all_train.tex")
 save_latex_stargazer(GDP_loss_1deg_all_train, "step4_benchmark_model/outputs/GDP_loss_1deg_all_train.tex")
 save_latex_stargazer(R2_chan_1deg_all_train, "step4_benchmark_model/outputs/R2_annual_chan_1deg_all_train.tex")
-
 
 # ------------------------------------------------------------------------------------------------------------------------------------
 # 0.5 degree model
@@ -332,11 +332,10 @@ R2_chan_0_5deg_all_train <- annual_chan %>%
   mutate(across(c(`R2: Developed`, `R2: Developing`), 
                 ~ ifelse(is.na(.), NA, sprintf("%.2f%%", . * 100))))   
 
-
 save_latex_stargazer <- function(df, filename) {
-  
+
   colnames(df) <- gsub("&", "\\&", colnames(df), fixed = TRUE)
-  
+
   stargazer(df, summary = FALSE, rownames = FALSE, type = "latex", out = filename,
             title = "Table Title", label = "tab:title", 
             digits = 3, style = "default", align = TRUE)
@@ -494,9 +493,9 @@ R2_chan_0_25deg_all_train <- annual_chan %>%
                 ~ ifelse(is.na(.), NA, sprintf("%.2f%%", . * 100))))   
 
 save_latex_stargazer <- function(df, filename) {
-  
+
   colnames(df) <- gsub("&", "\\&", colnames(df), fixed = TRUE)
-  
+
   stargazer(df, summary = FALSE, rownames = FALSE, type = "latex", out = filename,
             title = "Table Title", label = "tab:title", 
             digits = 3, style = "default", align = TRUE)

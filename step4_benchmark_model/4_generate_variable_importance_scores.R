@@ -1,10 +1,14 @@
-# ============================================================================ #
-# This script calculates variable importance scores for the 1deg, 0.5deg, and 0.25deg models.
-# ============================================================================ #
+# --------------------------------- Task Summary --------------------------------- #
+# This file calculates variable importance scores for the baseline 1-degree,
+# 0.5-degree, and 0.25-degree models trained in
+# step4_benchmark_model/2_put_all_isos_to_train_xdeg.R.
+# Importance is measured by the drop in productivity-ratio R^2 (and related
+# metrics) when each predictor is replaced with its sample mean.
+# -------------------------------------------------------------------------------- #
 
-rm(list = ls())
-gc()
+# use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 
+Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(tidyverse)
@@ -88,19 +92,15 @@ calc_corr_sq_within <- function(df, true_col, pred_col) {
 # ============================================================================ #
 
 process_resolution <- function(res) {
-  
+
   cat("Processing:", res, "\n")
-  
+
   target_var <- paste0("GCP_share_", res)
-  
-  # Load model (different path for 1deg vs others)
-  if (res == "1deg") {
-    load(paste0("rf_model9_good_grid_search_", res, ".RData"))
-  } else {
-    load(paste0("step4_benchmark_model/outputs/model9_tuning/put_all_isos_to_train/rf_model9_good_grid_search_", res, ".RData"))
-  }
+
+  # Load the baseline model trained in 2_put_all_isos_to_train_<res>.R
+  load(paste0("step4_benchmark_model/outputs/model9_tuning/put_all_isos_to_train/rf_model9_good_grid_search_", res, ".RData"))
   rf_model <- get(paste0("rf_model9_good_grid_search_", res))
-  
+
   # Load and combine data
   data_full <- bind_rows(
     read.csv(paste0("step4_benchmark_model/outputs/new_data_train_", res, ".csv")),
@@ -109,25 +109,25 @@ process_resolution <- function(res) {
     read.csv(paste0("step4_benchmark_model/outputs/new_data_test_year_", res, ".csv")),
     read.csv(paste0("step4_benchmark_model/outputs/new_data_test_iso_", res, ".csv"))
   )
-  
-  # Calculate productivity ratio
+
+  orig_pop_total_share <- data_full$pop_total_share
+
   calc_ratio <- function(pred_shares, data) {
     data %>%
       mutate(pred_share_raw = pred_shares,
-             pred_ratio = ifelse(pop_total_share > 0, pred_share_raw / pop_total_share, NA),
-             true_ratio = ifelse(pop_total_share > 0, .data[[target_var]] / pop_total_share, NA),
+             pred_ratio = ifelse(orig_pop_total_share > 0, pred_share_raw / orig_pop_total_share, NA),
+             true_ratio = ifelse(orig_pop_total_share > 0, .data[[target_var]] / orig_pop_total_share, NA),
              log_pred_ratio = ifelse(pred_ratio > 0, log(pred_ratio), NA),
              log_true_ratio = ifelse(true_ratio > 0, log(true_ratio), NA))
   }
-  
+
   # Baseline predictions
   baseline_pred <- predict(rf_model, data_full)$.pred
   data_with_ratio <- calc_ratio(baseline_pred, data_full)
   data_valid <- data_with_ratio %>%
     filter(!is.na(log_pred_ratio) & !is.na(log_true_ratio) &
              is.finite(log_pred_ratio) & is.finite(log_true_ratio))
-  
-  # Baseline metrics
+
   baseline <- list(
     r2_overall = calc_overall_r2(data_valid$log_true_ratio, data_valid$log_pred_ratio),
     r2_within = calc_within_r2(data_valid, "log_true_ratio", "log_pred_ratio"),
@@ -136,7 +136,7 @@ process_resolution <- function(res) {
     mse_overall = calc_overall_mse(data_valid$log_true_ratio, data_valid$log_pred_ratio),
     mse_within = calc_within_mse(data_valid, "log_true_ratio", "log_pred_ratio")
   )
-  
+
   # Variable importance loop
   results <- map_dfr(predictor_vars, function(var_name) {
     data_replaced <- data_full %>% mutate(!!var_name := mean(.data[[var_name]], na.rm = TRUE))
@@ -145,7 +145,7 @@ process_resolution <- function(res) {
     dv <- data_replaced_ratio %>%
       filter(!is.na(log_pred_ratio) & !is.na(log_true_ratio) &
                is.finite(log_pred_ratio) & is.finite(log_true_ratio))
-    
+
     tibble(
       Variable = var_name,
       R2_Overall_After = calc_overall_r2(dv$log_true_ratio, dv$log_pred_ratio),
@@ -156,8 +156,7 @@ process_resolution <- function(res) {
       MSE_Within_After = calc_within_mse(dv, "log_true_ratio", "log_pred_ratio")
     )
   })
-  
-  # Calculate importance and ranks
+
   importance_df <- results %>%
     mutate(
       Baseline_R2_Overall = baseline$r2_overall,
@@ -180,8 +179,7 @@ process_resolution <- function(res) {
       Rank_MSE_Within = rank(-Importance_MSE_Within)
     ) %>%
     arrange(desc(Importance_CorrSq_Within))
-  
-  # Save output
+
   output_csv <- paste0("step4_benchmark_model/outputs/importance_scores_", res, ".csv")
   write.csv(importance_df, output_csv, row.names = FALSE)
   cat("Saved:", output_csv, "\n")

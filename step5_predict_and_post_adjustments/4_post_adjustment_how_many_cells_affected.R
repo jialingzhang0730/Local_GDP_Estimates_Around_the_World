@@ -3,8 +3,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -12,22 +10,16 @@ Sys.setlocale("LC_ALL", "en_US.UTF-8")
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(exactextractr)
 library(terra)
 library(raster)
@@ -58,7 +50,6 @@ deg1_adjust_0_01 <- read.csv("step5_predict_and_post_adjustments/outputs/predict
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
 
-
 deg1_adjust_0_02 <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_0_02_adjust.csv") %>% 
     group_by(year) %>%
     mutate(cell_affected = sum(is_cell_censored),
@@ -71,7 +62,6 @@ deg1_adjust_0_02 <- read.csv("step5_predict_and_post_adjustments/outputs/predict
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
 
-
 deg1_adjust_0_05 <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_1deg_postadjust_pop_dens_0_05_adjust.csv") %>% 
     group_by(year) %>%
     mutate(cell_affected = sum(is_cell_censored),
@@ -83,7 +73,6 @@ deg1_adjust_0_05 <- read.csv("step5_predict_and_post_adjustments/outputs/predict
     distinct(year, .keep_all = TRUE) %>% 
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
-
 
 list_of_datasets <- list("No_Adjust" = deg1_no_adjust,
                          "Adjust_0_01" = deg1_adjust_0_01,
@@ -118,7 +107,6 @@ deg0_5_adjust_0_01 <- read.csv("step5_predict_and_post_adjustments/outputs/predi
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
 
-
 deg0_5_adjust_0_02 <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_0_5deg_postadjust_pop_dens_0_02_adjust.csv") %>% 
     group_by(year) %>%
     mutate(cell_affected = sum(is_cell_censored),
@@ -131,7 +119,6 @@ deg0_5_adjust_0_02 <- read.csv("step5_predict_and_post_adjustments/outputs/predi
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
 
-
 deg0_5_adjust_0_05 <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_0_5deg_postadjust_pop_dens_0_05_adjust.csv") %>% 
     group_by(year) %>%
     mutate(cell_affected = sum(is_cell_censored),
@@ -143,7 +130,6 @@ deg0_5_adjust_0_05 <- read.csv("step5_predict_and_post_adjustments/outputs/predi
     distinct(year, .keep_all = TRUE) %>% 
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
-
 
 list_of_datasets <- list("No_Adjust" = deg0_5_no_adjust,
                          "Adjust_0_01" = deg0_5_adjust_0_01,
@@ -178,7 +164,6 @@ deg0_25_adjust_0_01 <- read.csv("step5_predict_and_post_adjustments/outputs/pred
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
 
-
 deg0_25_adjust_0_02 <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_0_25deg_postadjust_pop_dens_0_02_adjust.csv") %>% 
     group_by(year) %>%
     mutate(cell_affected = sum(is_cell_censored),
@@ -190,7 +175,6 @@ deg0_25_adjust_0_02 <- read.csv("step5_predict_and_post_adjustments/outputs/pred
     distinct(year, .keep_all = TRUE) %>% 
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
-
 
 deg0_25_adjust_0_05 <- read.csv("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/GDPC_0_25deg_postadjust_pop_dens_0_05_adjust.csv") %>% 
     group_by(year) %>%
@@ -204,7 +188,6 @@ deg0_25_adjust_0_05 <- read.csv("step5_predict_and_post_adjustments/outputs/pred
     dplyr::select(c(year, all_cells, cell_affected, num_zero_pop, perc_aff_inha, num_positive_GDP, test)) %>% 
     as.data.frame()
 
-
 list_of_datasets <- list("No_Adjust" = deg0_25_no_adjust,
                          "Adjust_0_01" = deg0_25_adjust_0_01,
                          "Adjust_0_02" = deg0_25_adjust_0_02,
@@ -212,16 +195,4 @@ list_of_datasets <- list("No_Adjust" = deg0_25_no_adjust,
 
 # Write the data frames to an Excel file with multiple sheets
 write_xlsx(list_of_datasets, "step5_predict_and_post_adjustments/outputs/post_adjust_statistic/deg0_25.xlsx")
-
-
-
-
-
-
-
-
-
-
-
-
 

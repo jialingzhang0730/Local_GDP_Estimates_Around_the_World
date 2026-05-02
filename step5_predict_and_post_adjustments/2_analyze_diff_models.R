@@ -3,8 +3,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -12,26 +10,22 @@ Sys.setlocale("LC_ALL", "en_US.UTF-8")
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
 library(cowplot)
 
 # --------------------------------------------------------------------------------------------------------------------------------
-# Model 9.1: train and predict at 1-degree level: trained on all years (2012-2021)
-# Model 9.2: train and predict at 0.5-degree level: trained on all years (2012-2021)
-# Model 9.3: train and predict at 0.25-degree level: trained on all years (2012-2021)
+# Model 9.1: train and predict at 1-degree level: trained on all years (2012-2022)
+# Model 9.2: train and predict at 0.5-degree level: trained on all years (2012-2022)
+# Model 9.3: train and predict at 0.25-degree level: trained on all years (2012-2022)
 
 # Model 9.5: train and predict at 1-degree level: trained on years 2012-2019
 # Model 9.6: train and predict at 0.5-degree level: trained on years 2012-2019
@@ -64,7 +58,7 @@ df <- model_9_1  %>%
 calculate_r_squared <- function(data_subset) {
   complete_data <- data_subset[!is.na(data_subset$pred_GCP_1deg_no_prov_bound_model91) & 
                                  !is.na(data_subset$pred_GCP_1deg_no_prov_bound_model92), ]
-  
+
   r_squared_linear = 1 - (sum((complete_data$pred_GCP_1deg_no_prov_bound_model91 - 
                                  complete_data$pred_GCP_1deg_no_prov_bound_model92)^2) / 
                             sum((complete_data$pred_GCP_1deg_no_prov_bound_model91 - 
@@ -80,7 +74,7 @@ p1 <- ggplot(df, aes(x = pred_GCP_1deg_no_prov_bound_model91, y = pred_GCP_1deg_
   annotate("text", x = Inf, y = -Inf, label = sprintf("R² = %.4f",  r_squared_results_full$linear), 
            hjust = 1.1, vjust = -0.5, size = 7, colour = "black") +
   labs(subtitle = "At 1-degree Resolution \nAll Years Data Included", 
-       x = "log(pred GDP) \nfrom 1deg model", # Unit: billion const 2017 USD
+       x = "log(pred GDP) \nfrom 1deg model", # Unit: billion const 2021 USD
        y = "log(pred GDP) aggregated from \n0.5deg model predictions")   +
   theme_minimal() +
   theme_bw() +
@@ -123,7 +117,7 @@ df <- model_9_1  %>%
 calculate_r_squared <- function(data_subset) {
   complete_data <- data_subset[!is.na(data_subset$pred_GCP_1deg_no_prov_bound_model91) & 
                                  !is.na(data_subset$pred_GCP_1deg_no_prov_bound_model93), ]
-  
+
   r_squared_linear = 1 - (sum((complete_data$pred_GCP_1deg_no_prov_bound_model91 - 
                                  complete_data$pred_GCP_1deg_no_prov_bound_model93)^2) / 
                             sum((complete_data$pred_GCP_1deg_no_prov_bound_model91 - 
@@ -139,7 +133,7 @@ p2 <- ggplot(df, aes(x=pred_GCP_1deg_no_prov_bound_model91, y = pred_GCP_1deg_no
   annotate("text", x = Inf, y = -Inf, label = sprintf("R² = %.4f",  r_squared_results_full$linear), 
            hjust = 1.1, vjust = -0.5, size = 7, colour = "black") +
   labs(subtitle = "At 1-degree Resolution \nAll Years Data Included", 
-       x = "log(pred GDP) \nfrom 1deg model", # Unit: billion const 2017 USD
+       x = "log(pred GDP) \nfrom 1deg model", # Unit: billion const 2021 USD
        y = "log(pred GDP) aggregated from \n0.25deg model predictions")   +
   theme_minimal() +
   theme_bw() +
@@ -183,13 +177,13 @@ calculate_r_squared <- function(data_subset) {
   # Create a complete cases subset - only rows where both variables are non-NA
   complete_data <- data_subset[!is.na(data_subset$pred_GCP_0_5deg_no_prov_bound_model92) & 
                                  !is.na(data_subset$pred_GCP_0_5deg_no_prov_bound_model93), ]
-  
+
   # Calculate R^2 on complete cases
   r_squared_linear = 1 - (sum((complete_data$pred_GCP_0_5deg_no_prov_bound_model92 - 
                                  complete_data$pred_GCP_0_5deg_no_prov_bound_model93)^2) / 
                             sum((complete_data$pred_GCP_0_5deg_no_prov_bound_model92 - 
                                    mean(complete_data$pred_GCP_0_5deg_no_prov_bound_model92))^2))
-  
+
   return(list(linear = r_squared_linear, n_obs = nrow(complete_data)))
 }
 
@@ -220,28 +214,15 @@ p3 <- ggplot(df, aes(x=pred_GCP_0_5deg_no_prov_bound_model92, y = pred_GCP_0_5de
 combined_plot <- plot_grid(p1, p2, p3, ncol = 3)
 ggsave("step5_predict_and_post_adjustments/outputs/analyze_diff_models/compare_gcp_vs_aggre_no_prov_bound_all_deg.png", plot = combined_plot, width = 19, height = 6, bg = "white")
 
-
 # --------------------------------------------------------------------------------------------------------------------------------
 # Now compare 45deg-line of Model 9.1 and Model 9.5: only year 2020 and 2021's predicted results
-
-# read the constant GDP datasets with different base years
-const_2017_USD <- read.csv("step2_obtain_gdp_data/temp/national_gdp_const_2017_USD.csv")
-const_2021_USD <- read.csv("step2_obtain_gdp_data/temp/national_gdp_const_2021_USD.csv")
-
-# create rescale index from constant 2017 USD to constant 2021 USD
-const_2017_to_const_2021_USD <- const_2017_USD %>%
-  dplyr::select(c(iso, year, rgdp_total)) %>%
-  rename(const_2017_USD = rgdp_total) %>%
-  left_join(const_2021_USD %>% dplyr::select(c(iso, year, rgdp_total)) %>% 
-              rename(const_2021_USD = rgdp_total), by = c("iso", "year")) %>%
-  mutate(const_2017_to_const_2021_USD_idx = const_2021_USD / const_2017_USD) %>%
-  dplyr::select(c(iso, year, const_2017_to_const_2021_USD_idx))
+# Both models are reported in constant 2021 USD; no cross-base rescaling required.
 
 # Load data files
 load("step5_predict_and_post_adjustments/outputs/predict_data_results_1deg_without_prov_boundary.RData")
 load("step5_predict_and_post_adjustments/outputs/predict_data_results_1deg_without_prov_boundary_model_up_to_2019.RData")
 
-# Model 9.1 (already in const 2021 USD)
+# Model 9.1
 model_9_1 <- predict_data_results_1deg_without_prov_boundary  %>% 
   filter(year %in% c(2020,2021,2022))  %>% 
   mutate(pred_GCP_1deg_no_prov_bound_model91 = log(pred_GCP_1deg_no_prov_bound))  %>% 
@@ -249,12 +230,11 @@ model_9_1 <- predict_data_results_1deg_without_prov_boundary  %>%
   as.data.frame()  %>% 
   distinct(cell_id, iso, year, .keep_all = TRUE) 
 
-# Model 9.5 (convert from const 2017 USD to const 2021 USD)
+# Model 9.5
 model_9_5 <- predict_data_results_1deg_without_prov_boundary_model_up_to_2019  %>% 
   filter(year %in% c(2020,2021,2022))  %>% 
-  left_join(const_2017_to_const_2021_USD, by = c("iso", "year")) %>%
   mutate(pred_GCP_1deg_no_prov_bound_model95 = log(pred_GCP_1deg_no_prov_bound)) %>% 
-  dplyr::select(-c("country_total_GDP","pred_GCP_1deg_no_prov_bound", "const_2017_to_const_2021_USD_idx"))  %>% 
+  dplyr::select(-c("country_total_GDP","pred_GCP_1deg_no_prov_bound"))  %>% 
   as.data.frame()  %>% 
   distinct(cell_id, iso, year, .keep_all = TRUE) 
 
@@ -305,9 +285,8 @@ model_9_1 <- predict_data_results_1deg_without_prov_boundary  %>%
 
 model_9_5 <- predict_data_results_1deg_without_prov_boundary_model_up_to_2019  %>% 
   filter(year %in% c(2018,2019))  %>% 
-  left_join(const_2017_to_const_2021_USD, by = c("iso", "year")) %>%
   mutate(pred_GCP_1deg_no_prov_bound_model95 = log(pred_GCP_1deg_no_prov_bound)) %>% 
-  dplyr::select(-c("country_total_GDP","pred_GCP_1deg_no_prov_bound", "const_2017_to_const_2021_USD_idx"))  %>% 
+  dplyr::select(-c("country_total_GDP","pred_GCP_1deg_no_prov_bound"))  %>% 
   as.data.frame()  %>% 
   distinct(cell_id, iso, year, .keep_all = TRUE) 
 
@@ -362,9 +341,8 @@ model_9_2 <- predict_data_results_0_5deg_without_prov_boundary  %>%
 
 model_9_6 <- predict_data_results_0_5deg_without_prov_boundary_model_up_to_2019  %>% 
   filter(year %in% c(2020,2021,2022))  %>% 
-  left_join(const_2017_to_const_2021_USD, by = c("iso", "year")) %>%
   mutate(pred_GCP_0_5deg_no_prov_bound_model96 = log(pred_GCP_0_5deg_no_prov_bound)) %>% 
-  dplyr::select(-c("country_total_GDP","pred_GCP_0_5deg_no_prov_bound", "const_2017_to_const_2021_USD_idx"))  %>% 
+  dplyr::select(-c("country_total_GDP","pred_GCP_0_5deg_no_prov_bound"))  %>% 
   as.data.frame()  %>% 
   distinct(cell_id, iso, year, .keep_all = TRUE)
 
@@ -417,9 +395,8 @@ model_9_2 <- predict_data_results_0_5deg_without_prov_boundary  %>%
 
 model_9_6 <- predict_data_results_0_5deg_without_prov_boundary_model_up_to_2019  %>% 
   filter(year %in% c(2018,2019))  %>% 
-  left_join(const_2017_to_const_2021_USD, by = c("iso", "year")) %>%
   mutate(pred_GCP_0_5deg_no_prov_bound_model96 = log(pred_GCP_0_5deg_no_prov_bound)) %>% 
-  dplyr::select(-c("country_total_GDP","pred_GCP_0_5deg_no_prov_bound", "const_2017_to_const_2021_USD_idx"))  %>% 
+  dplyr::select(-c("country_total_GDP","pred_GCP_0_5deg_no_prov_bound"))  %>% 
   as.data.frame()  %>% 
   distinct(cell_id, iso, year, .keep_all = TRUE)
 
@@ -459,7 +436,6 @@ p4 <- ggplot(df, aes(x=pred_GCP_0_5deg_no_prov_bound_model92, y = pred_GCP_0_5de
     plot.margin = margin(20, 13, 0, 13)
   )  
 
-
 # -------------
 # Now compare 45deg-line of Model 9.3 and Model 9.7: only year 2020 and 2021's predicted results
 
@@ -475,9 +451,8 @@ model_9_3 <- predict_data_results_0_25deg_without_prov_boundary  %>%
 
 model_9_7 <- predict_data_results_0_25deg_without_prov_boundary_model_up_to_2019  %>% 
   filter(year %in% c(2020,2021,2022))  %>% 
-  left_join(const_2017_to_const_2021_USD, by = c("iso", "year")) %>%
   mutate(pred_GCP_0_25deg_no_prov_bound_model97 = log(pred_GCP_0_25deg_no_prov_bound)) %>% 
-  dplyr::select(-c("country_total_GDP","pred_GCP_0_25deg_no_prov_bound", "const_2017_to_const_2021_USD_idx"))  %>% 
+  dplyr::select(-c("country_total_GDP","pred_GCP_0_25deg_no_prov_bound"))  %>% 
   as.data.frame()  %>% 
   distinct(cell_id, iso, year, .keep_all = TRUE)
 
@@ -530,9 +505,8 @@ model_9_3 <- predict_data_results_0_25deg_without_prov_boundary  %>%
 
 model_9_7 <- predict_data_results_0_25deg_without_prov_boundary_model_up_to_2019  %>% 
   filter(year %in% c(2018,2019))  %>% 
-  left_join(const_2017_to_const_2021_USD, by = c("iso", "year")) %>%
   mutate(pred_GCP_0_25deg_no_prov_bound_model97 = log(pred_GCP_0_25deg_no_prov_bound)) %>% 
-  dplyr::select(-c("country_total_GDP","pred_GCP_0_25deg_no_prov_bound", "const_2017_to_const_2021_USD_idx"))  %>% 
+  dplyr::select(-c("country_total_GDP","pred_GCP_0_25deg_no_prov_bound"))  %>% 
   as.data.frame()  %>% 
   distinct(cell_id, iso, year, .keep_all = TRUE)
 

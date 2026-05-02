@@ -4,12 +4,12 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(tidyverse)
 library(readxl)
-library(units)
 library(sf)
 
 # ------------------------------------------------- #

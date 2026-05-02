@@ -1,12 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to compare this predictions with our formal benchmark model in section "step4_train_and_tune_log_change" (also our model in the paper)
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file compares the unweighted-training model's predictions with the benchmark model from step4.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -19,7 +15,6 @@ library(gdata)
 library(ranger)
 library(tidymodels)
 library(speedglm)
-library(vip)
 library(kableExtra)
 library(janitor)
 library(cowplot)
@@ -29,7 +24,6 @@ library(cowplot)
 all_iso_1deg <- read.csv("step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/best_model_metrics_1deg.csv")
 all_iso_0_5deg <- read.csv("step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/best_model_metrics_0_5deg.csv")
 all_iso_0_25deg <- read.csv("step7_robust_analysis/model_wo_weights/outputs/model9_tuning/put_all_isos_to_train/best_model_metrics_0_25deg.csv")
-
 
 variable_names <- c(
   "NTL from urban", "Lag NTL from urban", "Population", "Lag population", 
@@ -74,7 +68,7 @@ data <- data.frame(
   Metric = c("$R^2$ (Developed)", "$R^2$ (Developing)", "$R^2$ (All)", "Weighted $R^2$",
              "$R^2$ (Developed)", "$R^2$ (Developing)", "$R^2$ (All)", "Weighted $R^2$",
              merged_importance$Metric),
-  
+
   `1-deg` = c(
     paste0(round(all_iso_1deg$mean_r2_developed * 100, 2), "\\%"), 
     paste0(round(all_iso_1deg$mean_r2_developing * 100, 2), "\\%"), 
@@ -86,7 +80,7 @@ data <- data.frame(
     paste0(round(all_iso_1deg$wgt_chan_r2 * 100, 2), "\\%"),
     merged_importance$`1-degree Model`
   ),
-  
+
   `0.5-deg` = c(
     paste0(round(all_iso_0_5deg$mean_r2_developed * 100, 2), "\\%"), 
     paste0(round(all_iso_0_5deg$mean_r2_developing * 100, 2), "\\%"), 
@@ -98,7 +92,7 @@ data <- data.frame(
     paste0(round(all_iso_0_5deg$wgt_chan_r2 * 100, 2), "\\%"),
     merged_importance$`0.5-degree Model`
   ),
-  
+
   `0.25-deg` = c(
     paste0(round(all_iso_0_25deg$mean_r2_developed * 100, 2), "\\%"), 
     paste0(round(all_iso_0_25deg$mean_r2_developing * 100, 2), "\\%"), 
@@ -265,7 +259,6 @@ p4 <- ggplot(df, aes(x=log_diff, y = log_diff_test)) +
     plot.margin = margin(20, 13, 0, 13)
   )   
 
-
 # 0.25deg
 df <- benchmark_0_25deg %>% 
   dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, predicted_GCP)) %>% 
@@ -339,7 +332,6 @@ ggsave("step7_robust_analysis/model_wo_weights/outputs/compare_w_wo_wgt_all_deg.
 
 # ------------------------------------------------------------------------------------------------------------------------------------
 # now I want to do the same tests to compare:
-
 
 # first test: china test
 # read the true cell GDP
@@ -450,7 +442,6 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
 
 ggsave("step7_robust_analysis/model_wo_weights/outputs/log_level_change_r2.png", plot = combined_plot, width = 18, height = 12, bg = "white")
 
-
 # Second test: China test but use model trained on year 2012-2019
 # read the true cell GDP
 load("step6_test_model_under_shocks/outputs/CHN_test/chn_1deg_cell_GCP.RData")
@@ -502,7 +493,6 @@ change <- china_df %>%
   dplyr::select(iso, prov_id, cell_id, year, grate_pred, grate_true, pred_GCP_1deg) %>%
   filter(year != 2012) %>% 
   filter(is.finite(grate_pred) & is.finite(grate_true))
-
 
 yr_group_chan_pred <- change %>% 
   mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 

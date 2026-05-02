@@ -1,12 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to compare this predictions with our formal benchmark model in section "step4_train_and_tune_log_change" (also our model in the paper)
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file compares the developed-only model's predictions with the benchmark model from step4.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -19,7 +15,6 @@ library(gdata)
 library(ranger)
 library(tidymodels)
 library(speedglm)
-library(vip)
 library(kableExtra)
 library(estimatr)
 library(gridExtra)
@@ -62,13 +57,13 @@ clean_names <- function(df) {
       TRUE ~ Variable
     ))
 }
-load("step7_robust_analysis/model_wo_developing/outputs/var_imptc_score_1deg.RData")
+load("step7_robust_analysis/model_wo_developing/outputs/model9_tuning/put_all_isos_to_train/var_imptc_score_1deg.RData")
 importance_1deg <- var_importance[[1]] %>% clean_names()
 
-load("step7_robust_analysis/model_wo_developing/outputs/var_imptc_score_0_5deg.RData")
+load("step7_robust_analysis/model_wo_developing/outputs/model9_tuning/put_all_isos_to_train/var_imptc_score_0_5deg.RData")
 importance_0_5deg <- var_importance[[1]] %>% clean_names()
 
-load("step7_robust_analysis/model_wo_developing/outputs/var_imptc_score_0_25deg.RData")
+load("step7_robust_analysis/model_wo_developing/outputs/model9_tuning/put_all_isos_to_train/var_imptc_score_0_25deg.RData")
 importance_0_25deg <- var_importance[[1]] %>% clean_names()
 
 merged_importance <- data.frame(
@@ -83,19 +78,19 @@ data <- data.frame(
   Metric = c("$R^2$ (All)",
              "$R^2$ (All)",
              merged_importance$Metric),
-  
+
   `1-deg` = c(
     paste0(round(all_iso_1deg$mean_r2_all * 100, 2), "\\%"), 
     paste0(round(all_iso_1deg$mean_chan_r2_all * 100, 2), "\\%"),
     merged_importance$`1-degree Model`
   ),
-  
+
   `0.5-deg` = c(
     paste0(round(all_iso_0_5deg$mean_r2_all * 100, 2), "\\%"), 
     paste0(round(all_iso_0_5deg$mean_chan_r2_all * 100, 2), "\\%"),
     merged_importance$`0.5-degree Model`
   ),
-  
+
   `0.25-deg` = c(
     paste0(round(all_iso_0_25deg$mean_r2_all * 100, 2), "\\%"), 
     paste0(round(all_iso_0_25deg$mean_chan_r2_all * 100, 2), "\\%"),
@@ -394,7 +389,6 @@ table_latex <- results %>%
 
 save_kable(table_latex, file = "step7_robust_analysis/model_wo_developing/outputs/developing_perfomance_1deg.tex")
 
-
 # 0.5-degree model
 
 developing_group <- c("CHL","COL","IDN","KGZ","PER","PHL","ALB","BIH","BLR",
@@ -525,7 +519,6 @@ table_latex <- results %>%
 
 save_kable(table_latex, file = "step7_robust_analysis/model_wo_developing/outputs/developing_perfomance_0_25deg.tex")
 
-
 # I want the same tests for comparison
 
 # first test: china test
@@ -637,7 +630,6 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
 
 ggsave("step7_robust_analysis/model_wo_developing/outputs/log_level_change_r2.png", plot = combined_plot, width = 18, height = 12, bg = "white")
 
-
 # Second test: China test but use model trained on year 2012-2019
 # read the true cell GDP
 load("step6_test_model_under_shocks/outputs/CHN_test/chn_1deg_cell_GCP.RData")
@@ -688,7 +680,6 @@ change <- china_df %>%
   dplyr::select(iso, prov_id, cell_id, year, grate_pred, grate_true, pred_GCP_1deg) %>%
   filter(year != 2012) %>% 
   filter(is.finite(grate_pred) & is.finite(grate_true))
-
 
 yr_group_chan_pred <- change %>% 
   mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 
@@ -843,7 +834,6 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
 
 ggsave("step7_robust_analysis/model_wo_developing/outputs/log_level_change_r2_training_all.png", plot = combined_plot, width = 18, height = 12, bg = "white")
 
-
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # I also want to do the pop vs GDP test
 
@@ -883,7 +873,7 @@ y_limits <- range(c(pred_1deg$log_GCP, pred_0_5deg$log_GCP, pred_0_25deg$log_GCP
 
 format_equation <- function(model, degree) {
   coef_vals <- coef(model)
-  
+
   rounded_coefs <- c(
     round(coef_vals[1], 2),
     round(coef_vals[2], 2),
@@ -891,10 +881,10 @@ format_equation <- function(model, degree) {
     round(coef_vals[4], 3),
     round(coef_vals[5], 4)
   )
-  
+
   terms <- paste0(rounded_coefs[-1], " * x^", 1:degree)
   equation <- paste("y = ", rounded_coefs[1], " + ", paste(terms, collapse = " + "))
-  
+
   return(equation)
 }
 
@@ -907,21 +897,21 @@ format_red_line_equation <- function(intercept) {
 poly0 <- lm_robust(adjusted_log_GCP ~ 1, data = pred_1deg, se_type = "HC1")
 
 for (i in c(4)){
-  
+
   model <- lm_robust(log_GCP ~ 1 + poly(log_pop, degree = i, raw = TRUE), data = pred_1deg, se_type = "HC1")
-  
+
   pred_with_ci <- predict(model, newdata = pred_1deg, se.fit = TRUE, interval = "confidence", level = 0.95)
-  
+
   # Extract fitted values and confidence intervals
   pred_1deg$fitted <- pred_with_ci$fit[, "fit"]
   pred_1deg$lower <- pred_with_ci$fit[, "lwr"]
   pred_1deg$upper <- pred_with_ci$fit[, "upr"]
-  
+
   # Define column names for easier plotting
   fit_col <- paste0("fitted_GCP_share", i)
   lower_col <- paste0("ci_lower", i)
   upper_col <- paste0("ci_upper", i)
-  
+
   # Create the plot
   p1 <- ggplot(pred_1deg, aes(x = log_pop, y = log_GCP)) +
     geom_point(size = 0.1, color = "#858585") +
@@ -948,7 +938,7 @@ for (i in c(4)){
     theme(aspect.ratio = 1)
   # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
   # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
-  
+
   print(format_equation(model, 4))
   print(format_red_line_equation(coef(poly0)[1]))
 }
@@ -957,21 +947,21 @@ for (i in c(4)){
 poly0 <- lm_robust(adjusted_log_GCP ~ 1, data = pred_0_5deg, se_type = "HC1")
 
 for (i in c(4)){
-  
+
   model <- lm_robust(log_GCP ~ 1 + poly(log_pop, degree = i, raw = TRUE), data = pred_0_5deg, se_type = "HC1")
-  
+
   pred_with_ci <- predict(model, newdata = pred_0_5deg, se.fit = TRUE, interval = "confidence", level = 0.95)
-  
+
   # Extract fitted values and confidence intervals
   pred_0_5deg$fitted <- pred_with_ci$fit[, "fit"]
   pred_0_5deg$lower <- pred_with_ci$fit[, "lwr"]
   pred_0_5deg$upper <- pred_with_ci$fit[, "upr"]
-  
+
   # Define column names for easier plotting
   fit_col <- paste0("fitted_GCP_share", i)
   lower_col <- paste0("ci_lower", i)
   upper_col <- paste0("ci_upper", i)
-  
+
   # Create the plot
   p2 <- ggplot(pred_0_5deg, aes(x = log_pop, y = log_GCP)) +
     geom_point(size = 0.1, color = "#858585") +
@@ -998,7 +988,7 @@ for (i in c(4)){
     theme(aspect.ratio = 1)
   # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
   # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
-  
+
   print(format_equation(model, 4))
   print(format_red_line_equation(coef(poly0)[1]))
 }
@@ -1007,21 +997,21 @@ for (i in c(4)){
 poly0 <- lm_robust(adjusted_log_GCP ~ 1, data = pred_0_25deg, se_type = "HC1")
 
 for (i in c(4)){
-  
+
   model <- lm_robust(log_GCP ~ 1 + poly(log_pop, degree = i, raw = TRUE), data = pred_0_25deg, se_type = "HC1")
-  
+
   pred_with_ci <- predict(model, newdata = pred_0_25deg, se.fit = TRUE, interval = "confidence", level = 0.95)
-  
+
   # Extract fitted values and confidence intervals
   pred_0_25deg$fitted <- pred_with_ci$fit[, "fit"]
   pred_0_25deg$lower <- pred_with_ci$fit[, "lwr"]
   pred_0_25deg$upper <- pred_with_ci$fit[, "upr"]
-  
+
   # Define column names for easier plotting
   fit_col <- paste0("fitted_GCP_share", i)
   lower_col <- paste0("ci_lower", i)
   upper_col <- paste0("ci_upper", i)
-  
+
   # Create the plot
   p3 <- ggplot(pred_0_25deg, aes(x = log_pop, y = log_GCP)) +
     geom_point(size = 0.1, color = "#858585") +
@@ -1048,7 +1038,7 @@ for (i in c(4)){
     theme(aspect.ratio = 1)
   # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+1.5, label = format_equation(model, 4), hjust = 0, size = 3, color = "blue") +
   # annotate("text", x = min(x_limits) + 0.1, y = min(y_limits)+0.05, label = format_red_line_equation(coef(poly0)[1]), hjust = 0, size = 3, color = "red")
-  
+
   print(format_equation(model, 4))
   print(format_red_line_equation(coef(poly0)[1]))
 }

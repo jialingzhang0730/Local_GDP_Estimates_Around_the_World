@@ -3,8 +3,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -35,13 +33,13 @@ for (year in years){
   extract_temp1 <- extract %>%
     mutate(year = as.integer(year))  %>% 
     rename(NTL_snow_covered_period = NTL)
-  
+
   load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NTL_year_sep/NTL_extracted_1deg_2", year, ".RData"))
   extract_temp2 <- extract 
-  
+
   extract_temp3 <- extract_temp1  %>% 
     mutate(NTL_snow_free_period = extract_temp2$NTL)
-  
+
   if (is.null(NTL_full)) {
     NTL_full <- extract_temp3
   } else {
@@ -63,13 +61,13 @@ for (year in years){
   extract_temp1 <- extract %>%
     mutate(year = as.integer(year))  %>% 
     rename(NTL_snow_covered_period = NTL)
-  
+
   load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NTL_year_sep/NTL_extracted_0_5deg_2", year, ".RData"))
   extract_temp2 <- extract 
-  
+
   extract_temp3 <- extract_temp1  %>% 
     mutate(NTL_snow_free_period = extract_temp2$NTL)
-  
+
   if (is.null(NTL_full)) {
     NTL_full <- extract_temp3
   } else {
@@ -90,13 +88,13 @@ for (year in years){
   extract_temp1 <- extract %>%
     mutate(year = as.integer(year))  %>% 
     rename(NTL_snow_covered_period = NTL)
-  
+
   load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NTL_year_sep/NTL_extracted_0_25deg_2", year, ".RData"))
   extract_temp2 <- extract 
-  
+
   extract_temp3 <- extract_temp1  %>% 
     mutate(NTL_snow_free_period = extract_temp2$NTL)
-  
+
   if (is.null(NTL_full)) {
     NTL_full <- extract_temp3
   } else {

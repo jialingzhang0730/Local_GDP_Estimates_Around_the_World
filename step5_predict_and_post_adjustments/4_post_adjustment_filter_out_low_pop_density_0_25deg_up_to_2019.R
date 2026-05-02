@@ -4,40 +4,26 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
-rm(list = ls())
-gc()
-
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(exactextractr)
 library(terra)
 library(raster)
-
-# Set working directory
-setwd("/share/rossihansberglab/Nightlights_GDP/replication_packages_world_GCP/version2_year2012_2022")
 
 # ------------------------------------------------------------------------------------------------------------------------------
 # Model 9.1: 0_25deg
@@ -53,7 +39,6 @@ pop <- land_pop_extracted_region_level_0_25deg  %>%
        dplyr::select(c("cell_id", "subcell_id", "subcell_id_0_25", "id", "iso", "year", "pop"))  %>% 
        mutate(pop = floor(pop)) %>%
        mutate(iso = ifelse(iso == "Ala", "USA", iso))
-
 
 # load land area: 
 # Note: the land area calculated is the area in square km based on a spherical approximation of the Earth
@@ -92,7 +77,6 @@ pred_0_25deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust <- pred_0_25deg
                                         mutate(pred_GCP_share_0_25deg_rescaled = ifelse(pred_GCP_share_0_25deg == 0, 0, pred_GCP_share_0_25deg/sum(pred_GCP_share_0_25deg)))  %>% 
                                         ungroup()  %>% 
                                         mutate(pred_GCP_0_25deg = pred_GCP_share_0_25deg_rescaled * unit_gdp_af_sum_rescl) 
-
 
 deg0_25_geometry <- read_sf("step5_predict_and_post_adjustments/outputs/country_0_25deg_intersected.gpkg")  %>% 
                  dplyr::select(c(cell_id,  subcell_id, subcell_id_0_25, iso, geom)) %>%

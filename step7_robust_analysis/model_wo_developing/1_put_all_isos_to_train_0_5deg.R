@@ -3,6 +3,7 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -16,7 +17,6 @@ library(tidymodels)
 library(vip)
 library(parallel)
 library(readxl)
-library(units)
 
 # ------------------------------------------------- #
 # obtain full training data
@@ -58,7 +58,7 @@ folds <- group_vfold_cv(data_full, group = "iso", v = 5)
 
 set.seed(1234567)
 train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
-  
+
   target_var <- "GCP_share_0_5deg"
   predictor_vars <- c("pop_total_share","pop_urban_share", "pop_cropland_share", "pop_other_share", "CO2_bio_manuf_conbust_share", "CO2_bio_heavy_indus_share", "CO2_bio_tspt_share",
                       "CO2_non_org_manuf_conbust_share", "CO2_non_org_heavy_indus_share", "CO2_non_org_tspt_share", "NPP_share",
@@ -68,21 +68,21 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
                       "lag_CO2_bio_mc_share", "lag_CO2_nonorg_mc_share", "lag_CO2_bio_heavy_indus_share", "lag_CO2_non_org_heavy_indus_share",
                       "lag_CO2_bio_tspt_share", "lag_CO2_non_org_tspt_share", "lag_pop_urban_share", "lag_NPP_share", "lag_pop_cropland_share","lag_pop_other_share")
   formula = as.formula(paste(target_var, "~", paste(predictor_vars, collapse = " + ")))
-  
+
   if(tune_par){
     tic(paste0(name, "tuning parameters"))
-    
-    rf_grid <- expand.grid(mtry = c(29,30,31),
-                           trees = c(1300,1400,1500),
-                           min_n = c(200,300,400,500,600,700,800,900,1000,1100,1200,1250,1300,1350,1400,1600))
-    
+
+    rf_grid <- expand.grid(mtry = c(27,29,31),
+                           trees = c(1500),
+                           min_n = c(1800,2300,2800,3300))
+
     tune_hyperparameters <- function(params, data_full, df.cv) {
-      
+
       cat("Tuning hyperparameters for mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, "\n")
-      
+
       # Enhanced error handling wrapper
       error_log <- list()
-      
+
       tryCatch({
         # metric will be saved in those vectors
         mse_GDP_sh_dped_fit <- numeric(length(df.cv$splits))     
@@ -92,7 +92,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
         o_r2_chan_dped_fit <- numeric(length(df.cv$splits))
         w_r2_levl_dped_fit <- numeric(length(df.cv$splits))
         w_r2_chan_dped_fit <- numeric(length(df.cv$splits))
-        
+
         mse_GDP_sh_dped <- numeric(length(df.cv$splits))   
         mse_levl_dped <- numeric(length(df.cv$splits))
         mse_chan_dped <- numeric(length(df.cv$splits))
@@ -100,7 +100,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
         o_r2_chan_dped <- numeric(length(df.cv$splits))
         w_r2_levl_dped <- numeric(length(df.cv$splits))
         w_r2_chan_dped <- numeric(length(df.cv$splits))
-        
+
         # define functions with error handling
         MSE_GDP_sh <- function(true_values, predicted_values) {
           tryCatch({
@@ -110,7 +110,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             return(NA)
           })
         }
-        
+
         MSE_levl <- function(true_values, predicted_values) {
           tryCatch({
             valid <- true_values > 0 & predicted_values > 0
@@ -126,7 +126,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             return(NA)
           })
         }
-        
+
         MSE_chan <- function(true_values, true_last, predicted_values, predicted_last) {
           tryCatch({
             valid <- true_values > 0 & predicted_values > 0 & true_last > 0 & predicted_last > 0
@@ -146,7 +146,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             return(NA)
           })
         }
-        
+
         overall_r2_levl <- function(true_values, predicted_values) {
           tryCatch({
             valid <- true_values > 0 & predicted_values > 0
@@ -162,7 +162,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             return(NA)
           })
         }
-        
+
         overall_r2_chan <- function(true_values, true_last, predicted_values, predicted_last) {
           tryCatch({
             valid <- true_values > 0 & predicted_values > 0 & true_last > 0 & predicted_last > 0
@@ -182,7 +182,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             return(NA)
           })
         }
-        
+
         within_iso_r2_levl <- function(df, true_var, pred_var) {
           tryCatch({
             df_af <- df %>% 
@@ -192,27 +192,27 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
               group_by(iso, year) %>%
               mutate(iso_mean_true_log = mean(true_log)) %>%
               ungroup()
-            
+
             if(nrow(df_af) == 0) {
               cat("WARNING: No valid data in within_iso_r2_levl\n")
               return(NA)
             }
-            
+
             rss <- sum((df_af$true_log - df_af$pred_log)^2)
             wss <- sum((df_af$true_log - df_af$iso_mean_true_log)^2)
-            
+
             if(wss == 0) {
               cat("WARNING: Zero within-group variation in within_iso_r2_levl\n")
               return(NA)
             }
-            
+
             1 - rss / wss
           }, error = function(e) {
             cat("ERROR in within_iso_r2_levl: ", e$message, "\n")
             return(NA)
           })
         }
-        
+
         within_iso_r2_chan <- function(df, true_var, true_var_last, pred_var, pred_var_last) {
           tryCatch({
             df_af <- df %>% 
@@ -226,41 +226,41 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
               group_by(iso, year) %>% 
               mutate(iso_mean_true_log_diff = mean(true_log_diff)) %>% 
               ungroup() 
-            
+
             if(nrow(df_af) == 0) {
               cat("WARNING: No valid data in within_iso_r2_chan\n")
               return(NA)
             }
-            
+
             rss <- sum((df_af$true_log_diff - df_af$pred_log_diff)^2)
             wss <- sum((df_af$true_log_diff - df_af$iso_mean_true_log_diff)^2)
-            
+
             if(wss == 0) {
               cat("WARNING: Zero within-group variation in within_iso_r2_chan\n")
               return(NA)
             }
-            
+
             1 - rss / wss
           }, error = function(e) {
             cat("ERROR in within_iso_r2_chan: ", e$message, "\n")
             return(NA)
           })
         }
-        
+
         # define the following to save: n
         datapoint_counts <- list()
         var_importance <- list()
-        
+
         for (i in seq_along(df.cv$splits)) {
           cat("Processing fold", i, "of", length(df.cv$splits), "\n")
-          
+
           tryCatch({
             analysis <- as.data.frame(analysis(df.cv$splits[[i]]))
             assessment <- as.data.frame(assessment(df.cv$splits[[i]]))
-            
+
             cat("  Analysis data: ", nrow(analysis), "rows\n")
             cat("  Assessment data: ", nrow(assessment), "rows\n")
-            
+
             # Check for required columns in fold data
             fold_required <- c("GCP_share_0_5deg", "GCP_0_5deg", "state_total_GDP", 
                                "pop_total", "cell_id", "subcell_id", "iso", "year")
@@ -268,7 +268,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             if(length(fold_missing) > 0) {
               stop(paste("Missing columns in fold", i, ":", paste(fold_missing, collapse=", ")))
             }
-            
+
             # fit the model using training folds
             cat("  Fitting model...\n")
             fit <- tryCatch({
@@ -280,9 +280,9 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
               cat("ERROR fitting model in fold", i, ":", e$message, "\n")
               stop(e)
             })
-            
+
             var_importance[[i]] <- vi(fit)
-            
+
             # obtain model fit
             cat("  Processing analysis predictions...\n")
             analysis_fit <- tryCatch({
@@ -306,21 +306,21 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
               cat("Columns in analysis:", paste(names(analysis), collapse=", "), "\n")
               stop(e)
             })
-            
+
             developed_fit <- analysis_fit %>% filter(is_developing == 0)
             cat("  Developed fit data: ", nrow(developed_fit), "rows\n")
-            
+
             # When checking annual growth, exclude each ISO's first year
             developed_fit_ch <- developed_fit %>%
               group_by(iso) %>%
               filter(year != min(year)) %>%
               ungroup()
-            
+
             analysis_fit_ch <- analysis_fit %>% 
               group_by(iso) %>%
               filter(year != min(year)) %>%
               ungroup()  
-            
+
             # now prepare the assessment dataset
             cat("  Processing assessment predictions...\n")
             assessment_pred <- tryCatch({
@@ -343,26 +343,26 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
               cat("ERROR processing assessment_pred in fold", i, ":", e$message, "\n")
               stop(e)
             })
-            
+
             developed <- assessment_pred %>% filter(is_developing == 0)
             cat("  Developed assessment data: ", nrow(developed), "rows\n")
-            
+
             developed_ch <- developed %>%
               group_by(iso) %>%
               filter(year != min(year)) %>%
               ungroup()
-            
+
             assessment_pred_ch <- assessment_pred %>% 
               group_by(iso) %>%
               filter(year != min(year)) %>%
               ungroup()  
-            
+
             # document data points
             datapoint_counts[[i]] <- c(developed_ch = nrow(developed_ch))
-            
+
             # Calculate metrics with detailed error handling
             cat("  Calculating metrics...\n")
-            
+
             # within-sample fit metrics
             mse_GDP_sh_dped_fit[i] <- MSE_GDP_sh(developed_fit$GCP_share_0_5deg, developed_fit$pred_GCP_sh)
             mse_levl_dped_fit[i] <- MSE_levl(developed_fit$GCP_0_5deg, developed_fit$pred_GCP)
@@ -374,7 +374,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             w_r2_levl_dped_fit[i] <- within_iso_r2_levl(developed_fit, GCP_0_5deg, pred_GCP)
             w_r2_chan_dped_fit[i] <- within_iso_r2_chan(developed_fit_ch, GCP_0_5deg, prev_yr_true_gdp, 
                                                         pred_GCP, prev_yr_pred_gdp)
-            
+
             # out of sample metrics
             mse_GDP_sh_dped[i] <- MSE_GDP_sh(developed$GCP_share_0_5deg, developed$pred_GCP_sh)
             mse_levl_dped[i] <- MSE_levl(developed$GCP_0_5deg, developed$pred_GCP)
@@ -386,15 +386,15 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             w_r2_levl_dped[i] <- within_iso_r2_levl(developed, GCP_0_5deg, pred_GCP)
             w_r2_chan_dped[i] <- within_iso_r2_chan(developed_ch, GCP_0_5deg, prev_yr_true_gdp, 
                                                     pred_GCP, prev_yr_pred_gdp)
-            
+
             cat("  Fold", i, "completed successfully\n")
-            
+
           }, error = function(e) {
             cat("CRITICAL ERROR in fold", i, ":\n")
             cat("  Message:", e$message, "\n")
             cat("  Call:", deparse(e$call), "\n")
             error_log[[paste0("fold_", i)]] <- list(message = e$message, call = e$call)
-            
+
             # Set all metrics to NA for this fold
             mse_GDP_sh_dped_fit[i] <- NA
             mse_levl_dped_fit[i] <- NA
@@ -412,7 +412,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             w_r2_chan_dped[i] <- NA
           })
         }
-        
+
         # Create metrics dataframe
         metrics_df <- tryCatch({
           tibble(mtry = params$mtry, trees = params$trees, min_n = params$min_n,
@@ -434,7 +434,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
           cat("ERROR creating metrics_df:", e$message, "\n")
           stop(e)
         })
-        
+
         # Save outputs
         tryCatch({
           write.csv(metrics_df, file = sprintf("step7_robust_analysis/model_wo_developing/outputs/model9_tuning/put_all_isos_to_train/detailed_metric_0_5deg/detail_metrics_%s_%s_%s.csv", 
@@ -442,7 +442,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
         }, error = function(e) {
           cat("ERROR saving metrics_df:", e$message, "\n")
         })
-        
+
         # Save datapoint counts
         if(length(datapoint_counts) > 0) {
           tryCatch({
@@ -456,14 +456,14 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
             cat("ERROR saving datapoint_counts:", e$message, "\n")
           })
         }
-        
+
         # Save variable importance
         tryCatch({
           save(var_importance, file = "step7_robust_analysis/model_wo_developing/outputs/model9_tuning/put_all_isos_to_train/var_imptc_score_0_5deg.RData")
         }, error = function(e) {
           cat("ERROR saving variable importance:", e$message, "\n")
         })
-        
+
         # Calculate mean metrics
         m_mse_GDP_sh_dped_fit <- mean(mse_GDP_sh_dped_fit, na.rm = TRUE)
         m_mse_levl_dped_fit <- mean(mse_levl_dped_fit, na.rm = TRUE)
@@ -472,7 +472,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
         m_or2_chan_dped_fit <- mean(o_r2_chan_dped_fit, na.rm = TRUE)
         m_wr2_levl_dped_fit <- mean(w_r2_levl_dped_fit, na.rm = TRUE)
         m_wr2_chan_dped_fit <- mean(w_r2_chan_dped_fit, na.rm = TRUE)
-        
+
         m_mse_GDP_sh_dped <- mean(mse_GDP_sh_dped, na.rm = TRUE)
         m_mse_levl_dped <- mean(mse_levl_dped, na.rm = TRUE)
         m_mse_chan_dped <- mean(mse_chan_dped, na.rm = TRUE)
@@ -480,7 +480,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
         m_or2_chan_dped <- mean(o_r2_chan_dped, na.rm = TRUE)
         m_wr2_levl_dped <- mean(w_r2_levl_dped, na.rm = TRUE)
         m_wr2_chan_dped <- mean(w_r2_chan_dped, na.rm = TRUE)
-        
+
         # Create results dataframe
         results <- data.frame(mtry = params$mtry, trees = params$trees, min_n = params$min_n,   
                               m_mse_GDP_sh_dped_fit = m_mse_GDP_sh_dped_fit,
@@ -497,7 +497,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
                               m_or2_chan_dped = m_or2_chan_dped,
                               m_wr2_levl_dped = m_wr2_levl_dped,
                               m_wr2_chan_dped = m_wr2_chan_dped)
-        
+
         cat(" --> [mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, "]\n\n")
         cat("MSE GDP Share\n")
         cat(" - Developed: ", m_mse_GDP_sh_dped, "\n\n")
@@ -513,40 +513,40 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
         cat(" - Developed: ", m_wr2_levl_dped, "\n\n")
         cat("Within R² (Change) log(GDP)\n")
         cat(" - Developed: ", m_wr2_chan_dped, "\n\n")
-        
+
         if(length(error_log) > 0) {
           cat("\n!!! ERRORS ENCOUNTERED DURING PROCESSING !!!\n")
           print(error_log)
           cat("\n")
         }
-        
+
         return(results)
-        
+
       }, error = function(e) {
         cat("\n\nCRITICAL FAILURE in tune_hyperparameters:\n")
         cat("Parameters: mtry=", params$mtry, ", trees=", params$trees, ", min_n=", params$min_n, "\n")
         cat("Error message:", e$message, "\n")
         cat("Error call:", deparse(e$call), "\n\n")
-        
+
         # Return NULL to indicate failure
         return(NULL)
       })
     }
-    
+
     set.seed(1234567)
     results <- mclapply(1:nrow(rf_grid), mc.cores = 10, function(i) {
       tryCatch({
         set.seed(1234567 + i)      
         params <- rf_grid[i,]
         result <- tune_hyperparameters(params, data_full, df.cv)
-        
+
         if(is.null(result)) {
           cat("Parameter set", i, "returned NULL (failed)\n")
         } else if(!is.data.frame(result)) {
           cat("Parameter set", i, "returned non-dataframe:", class(result), "\n")
           result <- NULL
         }
-        
+
         return(result)
       }, error = function(e) {
         cat("\n\nERROR in mclapply for parameter set", i, ":\n")
@@ -558,24 +558,24 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
         return(NULL)
       })
     }, mc.preschedule = TRUE)
-    
+
     # Check results before binding
     cat("\n\nChecking mclapply results:\n")
     cat("Total results:", length(results), "\n")
     cat("NULL results:", sum(sapply(results, is.null)), "\n")
     cat("Non-dataframe results:", sum(!sapply(results, is.data.frame)), "\n")
-    
+
     # Remove NULL and non-dataframe results
     valid_results <- results[sapply(results, function(x) !is.null(x) && is.data.frame(x))]
-    
+
     if(length(valid_results) == 0) {
       stop("\n\nFATAL ERROR: All parameter combinations failed!\n",
            "No valid results to process.\n",
            "Check the error messages above for details.")
     }
-    
+
     cat("Valid results to bind:", length(valid_results), "\n\n")
-    
+
     # Bind valid results
     tuning_results <- tryCatch({
       bind_rows(valid_results)
@@ -588,42 +588,34 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
       }
       stop(e)
     })
-    
+
     tuning_results_0_5deg <- tuning_results
     save(tuning_results_0_5deg, file = "step7_robust_analysis/model_wo_developing/outputs/model9_tuning/put_all_isos_to_train/tuning_results_0_5deg.RData")
-    
+
     param_final <- tuning_results_0_5deg %>%
       arrange(desc(m_or2_chan_dped)) %>%
       slice(1)
-    
+
     best_model_metrics <- tuning_results_0_5deg %>%
       arrange(desc(m_or2_chan_dped)) %>%
       slice(1) %>%
       pivot_longer(cols = everything(), names_to = "metric", values_to = "value")
-    
+
     write.csv(best_model_metrics, file = "step7_robust_analysis/model_wo_developing/outputs/model9_tuning/put_all_isos_to_train/best_model_metrics_0_5deg.csv", row.names = FALSE)
-    
+
     rf_fit <- rand_forest(mtry = param_final$mtry, trees = param_final$trees, min_n = param_final$min_n) %>%
       set_engine("ranger", importance = "impurity", verbose = T, seed = 1234567) %>%
       set_mode("regression") %>%
       fit(formula, data = data_full)
-    
+
     toc()
   }
-  
+
   return(rf_fit)
 }
 
 set.seed(1234567)
 tic("Train RF")
-rf_model9_good_grid_search_0_5deg <- tryCatch({
-  train_rf(data_full = data_full)
-}, error = function(e) {
-  cat("\n\nFINAL ERROR in train_rf:\n")
-  cat("  Message:", e$message, "\n")
-  cat("  Traceback:\n")
-  traceback()
-  stop(e)
-})
+rf_model9_good_grid_search_0_5deg <- train_rf(data_full = data_full)
 save(rf_model9_good_grid_search_0_5deg, file = "step7_robust_analysis/model_wo_developing/outputs/model9_tuning/put_all_isos_to_train/rf_model9_good_grid_search_0_5deg.RData")
 toc()

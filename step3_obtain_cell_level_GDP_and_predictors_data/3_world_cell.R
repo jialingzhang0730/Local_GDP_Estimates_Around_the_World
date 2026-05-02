@@ -4,8 +4,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -20,7 +18,6 @@ library(magrittr)
 library(tictoc)
 library(parallel)
 library(gdata)
-library(units)
 
 # ------------------------------------------------- # 
 # load the boundaries we created 
@@ -132,8 +129,8 @@ which_iso_year <- rgdp_total_af_sum_rescl_pre %>%
   reframe(year = setdiff(2012:2022, year)) %>%
   filter(length(year) > 0)
 
-fulfill_gdp <- read.csv("step2_obtain_gdp_data/temp/national_gdp_const_2021_USD.csv")  %>% # recall that we use national_gdp_const_2017_USD 
-  rename(rgdp_2021_USD = rgdp_total) %>% 
+fulfill_gdp <- read.csv("step2_obtain_gdp_data/temp/national_gdp_const_2021_USD.csv")  %>%
+  rename(rgdp_2021_USD = rgdp_total) %>%
   semi_join(which_iso_year, by = c("iso", "year")) %>% 
   mutate(id = iso, 
          rescale_level = 1,

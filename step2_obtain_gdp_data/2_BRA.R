@@ -11,12 +11,12 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(tidyverse)
 library(readxl)
-library(units)
 library(sf)
 library(docxtractr)
 library(janitor)
@@ -37,7 +37,7 @@ sheet_names <- c("Tabela3", "Tabela4", "Tabela5", "Tabela6", "Tabela7", "Tabela8
 for (sheet in sheet_names) {
   data <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/BRA/PIB_Otica_Renda_UF.xls", sheet = sheet, col_names = FALSE)  # Read the specific sheet
   admin_2_name <- data[7,1] # Extract the admin_2_name (row 7 is the region name), double check this when you update!!!
-  
+
   # Extract the admin_2_rgdp_total (the intersection of column named "2021" and row named "PIB - Ótica da Renda")
   data2 <- data %>% 
     slice(9:n()) %>% # remove the first 7 rows
@@ -46,7 +46,7 @@ for (sheet in sheet_names) {
     as.data.frame()
 
   admin_2_rgdp_total <- data2[9, "2021"] # row 9 is where "PIB - Ótica da Renda" is, double check this when you update!!!
-  
+
   # Create a dataframe with the extracted values
   df <- data.frame(admin_2_name = admin_2_name,
                    year = 2021,
@@ -94,12 +94,12 @@ final_df_2021 <- bind_rows(list_of_dfs)  %>%
     admin_2_name == "Tocantins" ~ "BR07",
     TRUE ~ NA))
 
-write.csv(final_df_2021, "version2_year2012_2022/step2_obtain_gdp_data/temp/BRA_2021.csv", row.names = F)
+write.csv(final_df_2021, "step2_obtain_gdp_data/temp/BRA_2021.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Obtain BRA 2022 subnational GDP data
 
-final_df_2022 <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs/gdp_data/regional/BRA/Especiais_2010_2022_xls/tab01.xls", col_names = TRUE) %>% 
+final_df_2022 <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/BRA/Especiais_2010_2022_xls/tab01.xls", col_names = TRUE) %>% 
     slice(4:n()) %>% # remove the first three rows
     dplyr::select(c(1,14)) %>% 
     rename(admin_2_name = 1, admin_2_rgdp_total = 2) %>% # rename columns
@@ -141,7 +141,7 @@ final_df_2022 <- read_excel("version2_year2012_2022/step2_obtain_gdp_data/inputs
     admin_2_name == "Tocantins" ~ "BR07",
     TRUE ~ NA))
 
-write.csv(final_df_2022, "version2_year2012_2022/step2_obtain_gdp_data/temp/BRA_2022.csv", row.names = F)
+write.csv(final_df_2022, "step2_obtain_gdp_data/temp/BRA_2022.csv", row.names = F)
 
 # ------------------------------------------------- #
 # Create shapefiles -----

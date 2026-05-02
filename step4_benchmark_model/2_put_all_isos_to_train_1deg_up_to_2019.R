@@ -3,6 +3,7 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -12,12 +13,10 @@ library(ranger)
 library(tidyverse)
 library(magrittr)
 library(tictoc)
-library(ranger)
 library(tidymodels)
 library(vip)
 library(parallel)
 library(readxl)
-library(units)
 
 # ------------------------------------------------- #
 # obtain full training data
@@ -74,7 +73,7 @@ folds <- group_vfold_cv(data_full, group = "iso", v = 5)
 
 set.seed(1234567)
 train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
-  
+
   target_var <- "GCP_share_1deg"
   predictor_vars <- c("pop_total_share","pop_urban_share", "pop_cropland_share", "pop_other_share", "CO2_bio_manuf_conbust_share", "CO2_bio_heavy_indus_share", "CO2_bio_tspt_share",
                       "CO2_non_org_manuf_conbust_share", "CO2_non_org_heavy_indus_share", "CO2_non_org_tspt_share", "NPP_share",
@@ -88,9 +87,9 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
   if(tune_par){
     tic(paste0(name, "tuning parameters"))
 
-    rf_grid <- expand.grid(mtry = c(31,32,33,34,35),
-                            trees = c(1500),
-                            min_n = c(1800,1900,2000,2100,2200))
+    rf_grid <- expand.grid(mtry = c(27,30,32,34),
+                           trees = c(1500),
+                           min_n = c(1200,1500,1800,2100,2400,2700))
 
     tune_hyperparameters <- function(params, data_full, df.cv) {
 
@@ -219,7 +218,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
       # define the following to save: n
       datapoint_counts <- list()
       var_importance <- list()
-            
+
       for (i in seq_along(df.cv$splits)) {
 
         analysis <- as.data.frame(analysis(df.cv$splits[[i]]))
@@ -230,7 +229,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
           set_engine("ranger", verbose = FALSE, importance = "impurity", seed = 1234567) %>%
           set_mode("regression") %>%
           fit(formula, data = analysis, weights = import_weight)
-        
+
         var_importance[[i]] <- vi(fit)
 
         # obtain model fit: note here we care about fit, so do not use out of bag predictions
@@ -263,7 +262,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
           group_by(iso) %>%
           filter(year != min(year)) %>%
           ungroup()
-        
+
         analysis_fit_ch <- analysis_fit %>% 
           group_by(iso) %>%
           filter(year != min(year)) %>%
@@ -300,7 +299,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
           group_by(iso) %>%
           filter(year != min(year)) %>%
           ungroup()
-        
+
         assessment_pred_ch <- assessment_pred %>% 
           group_by(iso) %>%
           filter(year != min(year)) %>%
@@ -312,7 +311,6 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
           developing_ch = nrow(developing_ch),
           assessment_pred_ch = nrow(assessment_pred_ch)
         )
-
 
         # check the performance
         # ------- for the within-sample fit ------- # 
@@ -391,7 +389,6 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
 
         # ---------------------------------------------------------------------- # 
       }
-
 
       metrics_df <- tibble(mtry = params$mtry, trees = params$trees, min_n = params$min_n,    
 
@@ -675,7 +672,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
     }
 
     set.seed(1234567)
-    results <- mclapply(1:nrow(rf_grid), mc.cores = 8, function(i) {
+    results <- mclapply(1:nrow(rf_grid), mc.cores = 10, function(i) {
       set.seed(1234567 + i)      
       params <- rf_grid[i,]
       tune_hyperparameters(params, data_full, df.cv)
@@ -703,7 +700,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
 
   toc()
   }
-  
+
   return(rf_fit)
 }
 

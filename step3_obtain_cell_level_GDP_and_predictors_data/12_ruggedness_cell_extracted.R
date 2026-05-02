@@ -3,8 +3,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -47,7 +45,6 @@ toc()
 
 simplified_poly <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/world_province_0_5deg_with_cellid.gpkg")  %>% 
                     dplyr::select(-c("fid_2")) 
-
 
 tic("Ruggedness")
 ruggedness <- rast("step3_obtain_cell_level_GDP_and_predictors_data/inputs/ruggedness/tri.txt", crs("epsg:4326"))

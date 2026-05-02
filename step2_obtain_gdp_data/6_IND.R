@@ -7,12 +7,12 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(tidyverse)
 library(readxl)
-library(units)
 library(sf)
 
 # ------------------------------------------------- #
@@ -20,13 +20,13 @@ library(sf)
 
 # Only read the last two sheets, which contain data for the years 2012 to 2022.
 IND_regional_rgdp <- map_dfr(.x = c("T_28(iii)", "T_28(iv)"), .f = function(sheet){
-  
+
   df_out <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/IND/T28_09122024E699603AE68F445FB6E485839CCB697B.XLSX", skip = 5, n_max = 33, sheet = sheet) %>%
     dplyr::select(-any_of("2023-24")) %>% 
     pivot_longer(cols = matches("\\d{4}"), names_to = "year")
-  
+
   return(df_out)
-  
+
 })  %>% 
   rename(admin_2_name = ...1,
          rgdp_total = value)  %>% 

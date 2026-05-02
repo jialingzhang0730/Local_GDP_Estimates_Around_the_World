@@ -10,12 +10,12 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(tidyverse)
 library(readxl)
-library(units)
 library(sf)
 
 # ------------------------------------------------- #
@@ -106,7 +106,7 @@ za <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross re
             # This only changes "Аlmaty"'s values since 2021, because before 2021, "Zhetisu"'s values are 0
        filter(admin_2_name == "Аlmaty")
 
-# deal with: Start 2021, Ulytau is separated from Кaragandy
+# deal with: Starting from 2021, Ulytau is separated from Кaragandy
 uk <- read_excel("step2_obtain_gdp_data/inputs/gdp_data/regional/KAZ/1. Gross regional product.xlsx", sheet = "2008-2023", skip = 2, n_max = 22)  %>% 
        slice(-1) %>% # Remove the first row, as it contains the total GDP for the entire country.
        rename(admin_2_name = ...1)  %>% 

@@ -1,7 +1,8 @@
-# --------------- Task --------------- #
+# --------------------------------- Task Summary --------------------------------- #
 # This file downloads all necessary packages needed for this project
-# use R version 4.3.1 (2022-06-23) -- "Funny-Looking Kid"
-# ------------------------------------ #
+# -------------------------------------------------------------------------------- #
+
+# use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
 
 # List of required packages (add all your package names here)
 required_packages <- c(
@@ -12,8 +13,9 @@ required_packages <- c(
   "jsonlite", "lubridate", "wbstats", "httr", "readr", "ncdf4", "dplyr",
   "ggthemes", "magrittr", "purrr", "gdalUtilities", "tiff", "foreach",
   "iterators", "doParallel", "future", "future.apply", "stringr", "ggplot2",
-  "raster", "fs", "vip", "ranger", "tmaptools", "scales", "workflows",
-  "plotly", "htmlwidgets", "randomForest", "speedglm", "stargazer",
+  "raster", "fs", "vip", "ranger", "tidymodels", "tmaptools", "scales", "workflows",
+  "matrixStats", "sandwich", "lmtest", "furrr",
+  "randomForest", "speedglm", "stargazer",
   "kableExtra", "writexl", "colorRamps", "RColorBrewer", "gridExtra",
   "grid", "np", "estimatr", "splines", "knitr", "patchwork", "cowplot",
   "transformr", "gganimate"
@@ -23,9 +25,17 @@ required_packages <- c(
 missing_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
 if (length(missing_packages) > 0) {
   cat("Installing missing packages:\n", paste(missing_packages, collapse = ", "), "\n")
-  install.packages(missing_packages, dependencies = TRUE)
+  install.packages(missing_packages, dependencies = TRUE, repos = "https://cloud.r-project.org")
 } else {
   cat("All required packages are already installed.\n")
+}
+
+# rhdf5 is a Bioconductor package (used by step3 NTL/ruggedness/landcover scripts)
+if (!requireNamespace("rhdf5", quietly = TRUE)) {
+  if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager", repos = "https://cloud.r-project.org")
+  }
+  BiocManager::install("rhdf5", update = FALSE, ask = FALSE)
 }
 
 # Additional setup for qgisprocess

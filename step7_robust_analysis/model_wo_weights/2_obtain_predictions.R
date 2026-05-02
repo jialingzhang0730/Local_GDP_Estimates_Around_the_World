@@ -1,14 +1,10 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to obtain the predictions from the model trained in "1_put_all_isos_to_train_xdeg.R"
-#   prepare the predictions so to compare with our formal benchmark model in section "step4_train_and_tune_log_change" (also our model in the paper)
-# Predictions are obtained using exactly the same way as the formal benchmark model 
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file obtains predictions from the unweighted-training model (trained in
+# "1_put_all_isos_to_train_xdeg.R") and prepares them for comparison with the benchmark
+# model from step4. Predictions follow the same pipeline as the benchmark model.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -16,7 +12,6 @@ Sys.setlocale("LC_ALL", "en_US.UTF-8")
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
@@ -28,11 +23,7 @@ library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
 library(readxl)
-library(htmlwidgets)
 
 # ---------------------------------------------------------------------------------------------------------------------------------------
 # 1 degree
@@ -63,12 +54,12 @@ data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_1de
 data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_1deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "1_put_all_isos_to_train_xdeg.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
   rename(id = iso)  %>% 
-  mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg.R").
+  mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "1_put_all_isos_to_train_xdeg.R").
   dplyr::select(c(cell_id, id, year, pred_GCP_share_1deg))  %>% 
   mutate(cell_id = as.character(cell_id))  %>% 
   mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -160,7 +151,7 @@ organized_pred_1deg_postadjust_pop_dens_no_extra_adjust <- pred_1deg_with_prov_b
 load("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/pop_cell_1deg.RData")
 
 # no extra adjustment
-just_grid_1deg <- read.csv("step5_predict_and_post_adjustments/outputs/just_grid_1deg_with_lon_lat.csv")
+just_grid_1deg <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_1deg_with_lon_lat.csv")
 
 GDPC_1deg_postadjust_pop_dens_no_extra_adjust <- organized_pred_1deg_postadjust_pop_dens_no_extra_adjust  %>% 
   left_join(pop_cell_1deg %>% as.data.frame() %>% dplyr::select(-c(geom))) %>% 
@@ -201,12 +192,12 @@ data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_0_5
 data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_0_5deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "1_put_all_isos_to_train_xdeg.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
   rename(id = iso)  %>% 
-  mutate(pred_GCP_share_0_5deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg.R").
+  mutate(pred_GCP_share_0_5deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "1_put_all_isos_to_train_xdeg.R").
   dplyr::select(c(cell_id, subcell_id, id, year, pred_GCP_share_0_5deg))  %>% 
   mutate(cell_id = as.character(cell_id))  %>% 
   mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -296,7 +287,7 @@ organized_pred_0_5deg_postadjust_pop_dens_no_extra_adjust <- pred_0_5deg_with_pr
 
 load("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/pop_cell_0_5deg.RData")
 
-just_grid_0_5deg <- read.csv("step5_predict_and_post_adjustments/outputs/just_grid_0_5deg_with_lon_lat.csv")
+just_grid_0_5deg <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_5deg_with_lon_lat.csv")
 
 GDPC_0_5deg_postadjust_pop_dens_no_extra_adjust <- organized_pred_0_5deg_postadjust_pop_dens_no_extra_adjust  %>% 
   left_join(pop_cell_0_5deg %>% as.data.frame() %>% dplyr::select(-c(geom))) %>% 
@@ -337,7 +328,7 @@ data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_0_2
 data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_0_25deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "1_put_all_isos_to_train_xdeg.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$predictions)
 
 dped_list <- read_excel("step4_benchmark_model/inputs/list_developed_isos.xlsx")
@@ -349,7 +340,7 @@ data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_ye
   mutate(is_developing = ifelse(iso %in% developed_isos$developed | substr(iso,1,3) == "USA", 0, 1)) %>%
   arrange(original_order) %>% 
   rename(id = iso)  %>% 
-  mutate(pred_GCP_share_0_25deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg.R").
+  mutate(pred_GCP_share_0_25deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "1_put_all_isos_to_train_xdeg.R").
   dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, id, year, pred_GCP_share_0_25deg))  %>% 
   mutate(cell_id = as.character(cell_id))  %>% 
   mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -439,7 +430,7 @@ organized_pred_0_25deg_postadjust_pop_dens_no_extra_adjust <- pred_0_25deg_with_
 
 load("step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/pop_cell_0_25deg.RData")
 
-just_grid_0_25deg_with_lon_lat <- read.csv("step5_predict_and_post_adjustments/outputs/just_grid_0_25deg_with_lon_lat.csv")  %>% 
+just_grid_0_25deg_with_lon_lat <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_25deg_with_lon_lat.csv")  %>% 
   mutate(cell_id = as.character(cell_id))
 
 GDPC_0_25deg_postadjust_pop_dens_no_extra_adjust <- organized_pred_0_25deg_postadjust_pop_dens_no_extra_adjust  %>% 
@@ -478,7 +469,7 @@ data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_1de
 data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_1deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg_up_to_2019.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "1_put_all_isos_to_train_xdeg_up_to_2019.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$predictions)
 
 dped_list <- read_excel("step4_benchmark_model/inputs/list_developed_isos.xlsx")
@@ -492,7 +483,7 @@ data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_ye
   dplyr::select(-c(original_order)) %>%
   filter(year <= 2019)  %>% 
   rename(id = iso)  %>% 
-  mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg_up_to_2019.R").
+  mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "1_put_all_isos_to_train_xdeg_up_to_2019.R").
   dplyr::select(c(cell_id, id, year, pred_GCP_share_1deg))  %>% 
   mutate(cell_id = as.character(cell_id))  %>% 
   mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -531,7 +522,6 @@ pop <- land_pop_extracted_region_level_1deg  %>%
   dplyr::select(c("cell_id", "id", "iso", "year", "pop"))  %>% 
   mutate(pop = floor(pop)) %>%
   mutate(iso = ifelse(iso == "Ala", "USA", iso))
-
 
 # load land area: 
 # Note: the land area calculated is the area in square km based on a spherical approximation of the Earth

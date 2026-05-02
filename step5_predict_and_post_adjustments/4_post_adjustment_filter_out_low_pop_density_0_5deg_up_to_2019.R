@@ -4,34 +4,23 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
-rm(list = ls())
-gc()
-
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(exactextractr)
 library(terra)
 library(raster)
@@ -50,7 +39,6 @@ pop <- land_pop_extracted_region_level_0_5deg  %>%
   dplyr::select(c("cell_id", "subcell_id", "id", "iso", "year", "pop"))  %>% 
   mutate(pop = floor(pop)) %>%
   mutate(iso = ifelse(iso == "Ala", "USA", iso))
-
 
 # load land area: 
 # Note: the land area calculated is the area in square km based on a spherical approximation of the Earth
@@ -92,7 +80,6 @@ pred_0_5deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust <- pred_0_5deg_w
 
 pred_0_5deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust_upto_2019 <- pred_0_5deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust
 save(pred_0_5deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust_upto_2019, file = "step5_predict_and_post_adjustments/outputs/predict_data_results_postadjust_pop_density/pred_0_5deg_with_prov_bound_postadjust_pop_dens_no_extra_adjust_upto_2019.RData")
-
 
 deg0_5_geometry <- read_sf("step5_predict_and_post_adjustments/outputs/country_0_5deg_intersected.gpkg")  %>% 
   dplyr::select(c(cell_id,  subcell_id, iso, geom)) %>%

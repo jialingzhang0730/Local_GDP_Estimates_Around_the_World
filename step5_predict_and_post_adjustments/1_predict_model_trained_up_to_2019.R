@@ -4,8 +4,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -13,22 +11,16 @@ Sys.setlocale("LC_ALL", "en_US.UTF-8")
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 
 # ---------------------------------------------------------------------------------------------------------------------------------------
 # 1 degree
@@ -39,7 +31,7 @@ rf_model_good <- rf_model9_good_grid_search_1deg # because the name of the df in
 
 #load province/country GDP data
 province_GDP <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/rgdp_total_af_sum_rescl.csv") 
-                       
+
 #load predictors dataset
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predictors_put_in_model_1deg.RData")
 predict_data_complete <- predictors_put_in_model_1deg  %>% 
@@ -55,13 +47,13 @@ data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_1de
 data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_1deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg_up_to_2019.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "2_put_all_isos_to_train_xdeg_up_to_2019.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
     filter(year <= 2019)  %>% 
     rename(id = iso)  %>% 
-    mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg_up_to_2019.R").
+    mutate(pred_GCP_share_1deg = pred_train_sam[,1])  %>%  # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "2_put_all_isos_to_train_xdeg_up_to_2019.R").
     dplyr::select(c(cell_id, id, year, pred_GCP_share_1deg))  %>% 
     mutate(cell_id = as.character(cell_id))  %>% 
     mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -126,13 +118,13 @@ data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_0_5
 data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_0_5deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg_up_to_2019.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "2_put_all_isos_to_train_xdeg_up_to_2019.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
     filter(year <= 2019)  %>% 
     rename(id = iso)  %>% 
-    mutate(pred_GCP_share_0_5deg = pred_train_sam[,1])  %>%   # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg_up_to_2019.R").
+    mutate(pred_GCP_share_0_5deg = pred_train_sam[,1])  %>%   # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "2_put_all_isos_to_train_xdeg_up_to_2019.R").
     dplyr::select(c(cell_id, subcell_id, id, year, pred_GCP_share_0_5deg))  %>% 
     mutate(cell_id = as.character(cell_id))  %>% 
     mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"
@@ -179,7 +171,6 @@ predict_data_results_1deg_from_0_5deg_without_prov_boundary_model_up_to_2019 <- 
                                                    dplyr::select(c(cell_id, iso, year, pred_GCP_1deg_no_prov_bound, country_total_GDP, national_population)) 
 save(predict_data_results_1deg_from_0_5deg_without_prov_boundary_model_up_to_2019, file = "step5_predict_and_post_adjustments/outputs/predict_data_results_1deg_from_0_5deg_without_prov_boundary_model_up_to_2019.RData")
 
-
 # ---------------------------------------------------------------------------------------------------------------------------------------
 # 0.25 degree
 
@@ -205,13 +196,13 @@ data_test_year <- read.csv("step4_benchmark_model/outputs/new_data_test_year_0_2
 data_test_iso <- read.csv("step4_benchmark_model/outputs/new_data_test_iso_0_25deg.csv") 
 
 # oob predictions obtained during the model training
-# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "4_put_all_isos_to_train_xdeg_up_to_2019.R"
+# Important !!!!!: out-of-bag (OOB) predictions should correspond to the rows in the same order as they appear in the data_full dataset in "2_put_all_isos_to_train_xdeg_up_to_2019.R"
 pred_train_sam <- as.data.frame(rf_model_good$fit$predictions)
 
 data_full <- bind_rows(data_train, data_valid_year, data_valid_iso, data_test_year, data_test_iso)  %>% 
     filter(year <= 2019)  %>% 
     rename(id = iso)  %>% 
-    mutate(pred_GCP_share_0_25deg = pred_train_sam[,1])  %>%   # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "4_put_all_isos_to_train_xdeg_up_to_2019.R").
+    mutate(pred_GCP_share_0_25deg = pred_train_sam[,1])  %>%   # Important!!! Make sure the order of observations is the same as the order in your training sample (i.e., "2_put_all_isos_to_train_xdeg_up_to_2019.R").
     dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, id, year, pred_GCP_share_0_25deg))  %>% 
     mutate(cell_id = as.character(cell_id))  %>% 
     mutate(id = ifelse(substr(id,1,4) == "USA_", substr(id,5,6), id)) # so to match with "predict_data_complete"

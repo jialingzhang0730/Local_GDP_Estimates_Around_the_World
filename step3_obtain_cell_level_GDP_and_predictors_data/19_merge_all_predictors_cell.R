@@ -1,19 +1,14 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to combine those predictors and dependent variable to create the dataset for training
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file combines all predictors and the dependent variable to create the training dataset.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
@@ -133,7 +128,6 @@ NTL_put_in_model <- NTL_full_1deg  %>%
                   NTL_other_snow_covered_period_share, NTL_other_snow_free_period_share))  %>% 
   as.data.frame()
 
-
 # load landcover data and compute the share
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_full_1deg.RData")
 lc_put_in_model <- lc_full_1deg  %>% 
@@ -151,7 +145,6 @@ lc_put_in_model <- lc_full_1deg  %>%
   mutate(shrub_share = shrub/sum(shrub))  %>% 
   ungroup()  %>% 
   replace(is.na(.), 0) # some country does not have a specific landcover type, for example, Austria does not have "herbacous", so the share is 0/0, which turns to NA. So we assign value 0 to those.
-
 
 # load ruggedness
 rug_put_in_model <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/mean_ruggedness_1deg.csv")  %>% 
@@ -374,7 +367,6 @@ national_GDPC <- rbind(national_GDPC_pre, Ala)
 # load training countries GCP data
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_0_5deg_cell_GCP.RData")
 
-
 # Combine all the predictors into one file
 predictors_put_in_model_0_5deg_pre <- pop_put_in_model  %>%      
   left_join(CO2_bio_put_in_model, by = join_by(cell_id, subcell_id, id, iso, year))  %>% 
@@ -432,7 +424,6 @@ predict_data_complete_0_5deg <- training_iso_0_5deg_cell_GCP  %>%
 
 save(predict_data_complete_0_5deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_0_5deg.RData")
 
-
 #--------------------------------------------------------------------------------------------------------------
 # 0.25 degree
 
@@ -469,7 +460,6 @@ pop_put_in_model <- land_pop_extracted_region_level_0_25deg  %>%
          pop_other_share = pop_other/sum(pop_other),
          pop_total_share = pop_total/sum(pop_total))  %>% 
   ungroup()
-
 
 # load CO2_bio emission data and compute the share
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/CO2_bio_full_0_25deg.RData")
@@ -580,7 +570,6 @@ national_GDPC <- rbind(national_GDPC_pre, Ala)
 
 # load training countries GCP data
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_0_25deg_cell_GCP.RData")
-
 
 # Combine all the predictors into one file
 predictors_put_in_model_0_25deg_pre <- pop_put_in_model  %>% 

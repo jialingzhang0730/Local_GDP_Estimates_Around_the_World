@@ -1,12 +1,8 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to compare this predictions with our formal benchmark model in section "step4_train_and_tune_log_change" (also our model in the paper)
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file compares the MSE-tuned model's predictions with the benchmark model from step4.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -19,7 +15,6 @@ library(gdata)
 library(ranger)
 library(tidymodels)
 library(speedglm)
-library(vip)
 library(kableExtra)
 library(janitor)
 library(cowplot)
@@ -74,7 +69,7 @@ data <- data.frame(
              "$R^2$ (Developed)", "$R^2$ (Developing)", "$R^2$ (All)", "Weighted $R^2$",
              "$R^2$ (Developed)", "$R^2$ (Developing)", "$R^2$ (All)", "Weighted $R^2$",
              merged_importance$Metric),
-  
+
   `1-deg` = c(
     sprintf("%.5f", all_iso_1deg$mean_mse_developed), 
     sprintf("%.5f", all_iso_1deg$mean_mse_developing), 
@@ -90,7 +85,7 @@ data <- data.frame(
     paste0(round(all_iso_1deg$wgt_chan_r2 * 100, 2), "\\%"),
     merged_importance$`1-degree Model`
   ),
-  
+
   `0.5-deg` = c(
     sprintf("%.5f", all_iso_0_5deg$mean_mse_developed), 
     sprintf("%.5f", all_iso_0_5deg$mean_mse_developing), 
@@ -106,7 +101,7 @@ data <- data.frame(
     paste0(round(all_iso_0_5deg$wgt_chan_r2 * 100, 2), "\\%"),
     merged_importance$`0.5-degree Model`
   ),
-  
+
   `0.25-deg` = c(
     sprintf("%.5f", all_iso_0_25deg$mean_mse_developed), 
     sprintf("%.5f", all_iso_0_25deg$mean_mse_developing), 
@@ -352,7 +347,6 @@ ggsave("step7_robust_analysis/model_tune_MSE/outputs/compare_mmse_vs_myoy_all_de
 # ------------------------------------------------------------------------------------------------------------------------------------
 # now I want to do the same tests to compare:
 
-
 # first test: china test
 # read the true cell GDP
 load("step6_test_model_under_shocks/outputs/CHN_test/chn_1deg_cell_GCP.RData")
@@ -462,7 +456,6 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
 
 ggsave("step7_robust_analysis/model_tune_MSE/outputs/log_level_change_r2.png", plot = combined_plot, width = 18, height = 12, bg = "white")
 
-
 # Second test: China test but use model trained on year 2012-2019
 # read the true cell GDP
 load("step6_test_model_under_shocks/outputs/CHN_test/chn_1deg_cell_GCP.RData")
@@ -513,7 +506,6 @@ change <- china_df %>%
   dplyr::select(iso, prov_id, cell_id, year, grate_pred, grate_true, pred_GCP_1deg) %>%
   filter(year != 2012) %>% 
   filter(is.finite(grate_pred) & is.finite(grate_true))
-
 
 yr_group_chan_pred <- change %>% 
   mutate(yr_chan_group = ifelse(year %in% c(2013:2019), "Pre-COVID 2012-2019", ifelse(year %in% c(2020), "COVID 2020", "Post-COVID 2021-2022"))) %>% 

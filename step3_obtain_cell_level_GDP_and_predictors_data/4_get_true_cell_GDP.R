@@ -6,15 +6,12 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(dplyr)
 library(sf)
-library(dplyr)
 library(terra)
 library(stars)
 library(tidyverse)
@@ -23,7 +20,6 @@ library(magrittr)
 library(tictoc)
 library(parallel)
 library(gdata)
-library(units)
 library(exactextractr)
 library(purrr)
 library(qgisprocess)
@@ -31,13 +27,13 @@ library(qgisprocess)
 # ------------------------------------------------- # 
 # Obtain county GDP
 # DOSE has some regional data missing, please be carefull!!!!!!!!!!!! Very easy to make mistake
-county_GDP <- read.csv("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/rgdp_total_training_data.csv")  %>% 
+county_GDP <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/rgdp_total_training_data.csv")  %>% 
   filter(!(iso == "THA" & year %in% c(2012, 2013, 2019))) %>% # THA has missing regional data for 2012, 2013 and 2019
   filter(!(iso == "ECU" & year %in% c(2012, 2013, 2014))) # ECU has missing regional data for 2012, 2013 and 2014
 
 # ------------------------------------------------- # 
 # Obtain county GDP per capita
-load("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/land_pop_extracted_train_county.RData")
+load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/land_pop_extracted_train_county.RData")
 
 county_pop <- land_pop_extracted_train_county %>%
   dplyr::select(c("id", "iso", "year", "pop_share", "geom"))
@@ -50,7 +46,7 @@ county_GDPC <- county_GDP  %>%
   dplyr::select(c("id", "iso", "year", "county_GDPC", "geom"))  %>% 
   st_as_sf()
 
-st_write(county_GDPC, "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_GDPC.gpkg", append = F)
+st_write(county_GDPC, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_GDPC.gpkg", append = F)
 
 # ------------------------------------------------- # 
 # obtain cell grids
@@ -60,7 +56,18 @@ grid <- rast(resolution = 1, crs = "epsg:4326") %>% # by doing this, the world i
   setValues(NA) %>% st_as_stars() %>% st_as_sf(na.rm = F) %>%
   mutate(cell_id = rownames(.)) %>% 
   dplyr::select(-lyr.1)
-st_write(grid, "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_1degree.gpkg")
+st_write(grid, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_1degree.gpkg")
+
+# bottom-left (longitude, latitude) of each 1deg cell, used by downstream lon/lat joins
+just_grid_1deg_with_lon_lat <- grid %>%
+  mutate(centroid = st_centroid(geom),
+         longitude = st_coordinates(centroid)[, 1] - 0.5,
+         latitude  = st_coordinates(centroid)[, 2] - 0.5) %>%
+  as.data.frame() %>%
+  dplyr::select(cell_id, longitude, latitude)
+write.csv(just_grid_1deg_with_lon_lat,
+          file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_1deg_with_lon_lat.csv",
+          row.names = FALSE)
 
 # Add 0.5degree cells
 # This is done through QGIS: 
@@ -97,12 +104,24 @@ qgis_run_algorithm(
   OUTPUT = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/subcell_0_5grid.gpkg"
 )
 
-grid0_5deg <- read_sf("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/subcell_0_5grid.gpkg") %>%  
+grid0_5deg <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/subcell_0_5grid.gpkg") %>%  
   select(c(cell_id))  %>% 
   group_by(cell_id)  %>% 
   mutate(subcell_id = row_number())  %>% 
   arrange(as.numeric(cell_id))
-st_write(grid0_5deg, "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_5degree.gpkg")
+st_write(grid0_5deg, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_5degree.gpkg")
+
+# bottom-left (longitude, latitude) of each 0.5deg subcell
+just_grid_0_5deg_with_lon_lat <- grid0_5deg %>%
+  ungroup() %>%
+  mutate(centroid = st_centroid(geom),
+         longitude = st_coordinates(centroid)[, 1] - 0.25,
+         latitude  = st_coordinates(centroid)[, 2] - 0.25) %>%
+  as.data.frame() %>%
+  dplyr::select(cell_id, subcell_id, longitude, latitude)
+write.csv(just_grid_0_5deg_with_lon_lat,
+          file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_5deg_with_lon_lat.csv",
+          row.names = FALSE)
 
 # Add 0.25degree cells: similar approach to obtain "step3_obtain_cell_level_GDP_and_predictors_data/inputs/subcell_0_25grid.gpkg":
 # create 0.25deg grids
@@ -130,61 +149,26 @@ qgis_run_algorithm(
   OUTPUT = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/subcell_0_25grid.gpkg"
 )
 
-grid0_25deg <- read_sf("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/subcell_0_25grid.gpkg")  %>% 
+grid0_25deg <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/subcell_0_25grid.gpkg")  %>% 
   dplyr::select(c(cell_id, subcell_id, id))  %>% 
   group_by(cell_id, subcell_id)  %>% 
   arrange(id)  %>% 
   mutate(subcell_id_0_25 = row_number())  %>% 
   dplyr::select(-c(id))  %>% 
   arrange(as.numeric(cell_id), as.numeric(subcell_id))
-st_write(grid0_25deg, "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_25degree.gpkg")
+st_write(grid0_25deg, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_25degree.gpkg")
 
-# # -----I am a small chunk separator------ #
-# #
-# # Add 0.1degree cells: similar approach to obtain "step3_obtain_cell_level_GDP_and_predictors_data/outputs/subcell_0_1grid.gpkg":
-# # create 0.1deg grids
-# # intersect with 0.5degree. Note here you can not intersect with 0.25deg, let its parent be 0.5deg
-# #
-# # NOTE!!!!!!!: 
-# #
-# # Because of the boundary tolerance or precision problem, after you intersect, there will be some geometries looks like "(((-64 90, -64 89.9, -64 89.9, -64 90, -64 90)))"
-# # We need to drop those weird geom while maintaing those correct 0.1*0.1deg rectangle
-
-# grid0_1deg_check <- st_read("step3_obtain_cell_level_GDP_and_predictors_data/outputs/subcell_0_1grid.gpkg")
-
-# # generate a function to detect whether each feature is at 0.1*0.1deg
-# check_dimensions <- function(feature) {
-
-#   bbox <- st_bbox(feature) # Get the bounding box of the feature
-#   width <- abs(bbox$xmax - bbox$xmin) # Calculate the width in degrees
-#   height <- abs(bbox$ymax - bbox$ymin) # Calculate the height in degrees
-#   is_0.1deg <- (abs(width - 0.1) < 1e-6) & (abs(height - 0.1) < 1e-6)   # Check if the dimensions are approximately 0.1 degrees
-#   return(is_0.1deg) # return true or false
-
-# }
-
-# # Use mclapply to check the feature in parallel
-# valid_indices <- mclapply(1:nrow(grid0_1deg_check), mc.cores = 8, function(i) {
-#   check_dimensions(st_geometry(grid0_1deg_check)[i])
-# })
-
-# valid_features <- grid0_1deg_check %>%
-#   mutate(valid = unlist(valid_indices))  %>% 
-#   filter(valid) %>%
-#   select(-valid)
-
-# grid0_1deg <- valid_features  %>% 
-#               dplyr::select(c(cell_id, subcell_id, id))  %>% 
-#               group_by(cell_id, subcell_id)  %>% 
-#               arrange(id)  %>% 
-#               mutate(subcell_id_0_1 = row_number())  %>% 
-#               dplyr::select(-c(id))  %>% 
-#               arrange(as.numeric(cell_id), as.numeric(subcell_id))  %>% 
-#               ungroup()
-
-# st_write(grid0_1deg, "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_1degree.gpkg")
-
-# # -----END of the small chunk ------ #
+# bottom-left (longitude, latitude) of each 0.25deg subcell
+just_grid_0_25deg_with_lon_lat <- grid0_25deg %>%
+  ungroup() %>%
+  mutate(centroid = st_centroid(geom),
+         longitude = st_coordinates(centroid)[, 1] - 0.125,
+         latitude  = st_coordinates(centroid)[, 2] - 0.125) %>%
+  as.data.frame() %>%
+  dplyr::select(cell_id, subcell_id, subcell_id_0_25, longitude, latitude)
+write.csv(just_grid_0_25deg_with_lon_lat,
+          file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_0_25deg_with_lon_lat.csv",
+          row.names = FALSE)
 
 # ---------------------Important!!!---------------------------- # 
 # obtain intersected polygons:
@@ -215,18 +199,12 @@ qgis_run_algorithm(
   OUTPUT = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_0_25degree.gpkg"
 )
 
-
-# You might also need to apply "fix geometry" to "outputs/just_grid_0_1degree.gpkg"
-
 # read the files
-county_with_1cellid <- read_sf("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_1degree.gpkg") 
+county_with_1cellid <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_1degree.gpkg") 
 
-county_with_0_5cellid <- read_sf("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_0_5degree.gpkg") 
+county_with_0_5cellid <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_0_5degree.gpkg") 
 
-county_with_0_25cellid <- read_sf("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_0_25degree.gpkg")
-
-# county_with_0_1cellid <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_0_1degree.gpkg") %>% 
-#   dplyr::select(-c(fid_2)) 
+county_with_0_25cellid <- read_sf("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_0_25degree.gpkg")
 
 # ---------------------Important!!!---------------------------- # 
 # Obtain population for each county-cell intersected polygons
@@ -234,26 +212,26 @@ county_with_0_25cellid <- read_sf("version2_year2012_2022/step3_obtain_cell_leve
 # 1degree
 tic("Population")
 
-population_files <- list.files("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:23]
+population_files <- list.files("step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:23]
 
 pop_extracted <- mclapply(population_files, mc.cores = 5, FUN = function(filename){
-  
+
   r <- rast(filename)
   year_file <- gsub(".*landscan-global-(\\d{4}).*\\.tif", "\\1", filename)
   county_with_1cellid_year <- county_with_1cellid  %>% filter(year == as.integer(year_file))
-  
+
   extract <- cbind(county_with_1cellid_year, exact_extract(r, county_with_1cellid_year, 'sum')) %>% 
     rename(pop = exact_extract.r..county_with_1cellid_year...sum..)
-  save(extract, file = paste0("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_1deg", as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
-  
+  save(extract, file = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_1deg", as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
+
 })
 toc()
 
 years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021","2022")
 land_pop_full <- NULL 
 for (year in years){
-  load(paste0("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_1deg", year, ".RData"))
-  
+  load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_1deg", year, ".RData"))
+
   if (is.null(land_pop_full)) {
     land_pop_full <- extract
   } else {
@@ -263,31 +241,31 @@ for (year in years){
 county_cell_pop_extracted_1deg <- land_pop_full  %>% 
   replace_na(list(pop = 0))  
 
-save(county_cell_pop_extracted_1deg, file = "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_cell_pop_extracted_1deg.RData")
+save(county_cell_pop_extracted_1deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_cell_pop_extracted_1deg.RData")
 
 # 0.5 degree
 tic("Population")
 
-population_files <- list.files("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:23]
+population_files <- list.files("step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:23]
 
 pop_extracted <- mclapply(population_files, mc.cores = 5, FUN = function(filename){
-  
+
   r <- rast(filename)
   year_file <- gsub(".*landscan-global-(\\d{4}).*\\.tif", "\\1", filename)
   county_with_0_5cellid_year <- county_with_0_5cellid  %>% filter(year == as.integer(year_file))
-  
+
   extract <- cbind(county_with_0_5cellid_year, exact_extract(r, county_with_0_5cellid_year, 'sum')) %>% 
     rename(pop = exact_extract.r..county_with_0_5cellid_year...sum..)
-  save(extract, file = paste0("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_5deg", as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
-  
+  save(extract, file = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_5deg", as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
+
 })
 toc()
 
 years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021","2022")
 land_pop_full <- NULL 
 for (year in years){
-  load(paste0("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_5deg", year, ".RData"))
-  
+  load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_5deg", year, ".RData"))
+
   if (is.null(land_pop_full)) {
     land_pop_full <- extract
   } else {
@@ -297,31 +275,31 @@ for (year in years){
 county_cell_pop_extracted_0_5deg <- land_pop_full  %>% 
   replace_na(list(pop = 0))  
 
-save(county_cell_pop_extracted_0_5deg, file = "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_cell_pop_extracted_0_5deg.RData")
+save(county_cell_pop_extracted_0_5deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_cell_pop_extracted_0_5deg.RData")
 
 # 0.25 degree
 tic("Population")
 
-population_files <- list.files("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:23]
+population_files <- list.files("step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:23]
 
 pop_extracted <- mclapply(population_files, mc.cores = 5, FUN = function(filename){
-  
+
   r <- rast(filename)
   year_file <- gsub(".*landscan-global-(\\d{4}).*\\.tif", "\\1", filename)
   county_with_0_25cellid_year <- county_with_0_25cellid  %>% filter(year == as.integer(year_file))
-  
+
   extract <- cbind(county_with_0_25cellid_year, exact_extract(r, county_with_0_25cellid_year, 'sum')) %>% 
     rename(pop = exact_extract.r..county_with_0_25cellid_year...sum..)
-  save(extract, file = paste0("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_25deg", as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
-  
+  save(extract, file = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_25deg", as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
+
 })
 toc()
 
 years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021","2022")
 land_pop_full <- NULL 
 for (year in years){
-  load(paste0("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_25deg", year, ".RData"))
-  
+  load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_25deg", year, ".RData"))
+
   if (is.null(land_pop_full)) {
     land_pop_full <- extract
   } else {
@@ -331,41 +309,7 @@ for (year in years){
 county_cell_pop_extracted_0_25deg <- land_pop_full  %>% 
   replace_na(list(pop = 0))  
 
-save(county_cell_pop_extracted_0_25deg, file = "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_cell_pop_extracted_0_25deg.RData")
-
-# # 0.1 degree
-# tic("Population")
-
-# population_files <- list.files("step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T) #choose year only in 2022
-
-# pop_extracted <- mclapply(population_files, mc.cores = 5, FUN = function(filename){
-
-#   r <- rast(filename)
-#   year_file <- gsub(".*landscan-global-(\\d{4}).*\\.tif", "\\1", filename)
-#   county_with_0_1cellid_year <- county_with_0_1cellid  %>% filter(year == as.integer(year_file))
-
-#   extract <- cbind(county_with_0_1cellid_year, exact_extract(r, county_with_0_1cellid_year, 'sum')) %>% 
-#               rename(pop = exact_extract.r..county_with_0_1cellid_year...sum..)
-#   save(extract, file = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_1deg", as.numeric(str_extract(filename, "\\d{4}")), ".RData"))
-
-# })
-# toc()
-
-# years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020","2021")
-# land_pop_full <- NULL 
-# for (year in years){
-#           load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_gridded_pop_year_sep/county_pop_extracted_0_1deg", year, ".RData"))
-
-#           if (is.null(land_pop_full)) {
-#               land_pop_full <- extract
-#           } else {
-#               land_pop_full <- bind_rows(land_pop_full, extract)
-#           }
-# }
-# county_cell_pop_extracted_0_1deg <- land_pop_full  %>% 
-#                       replace_na(list(pop = 0))  
-
-# save(county_cell_pop_extracted_0_1deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_cell_pop_extracted_0_1deg.RData")
+save(county_cell_pop_extracted_0_25deg, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/county_cell_pop_extracted_0_25deg.RData")
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # obtain cell GDP
@@ -379,7 +323,7 @@ county_GDP_change_USA <- county_GDP  %>%
   ungroup()  %>% 
   mutate(id = ifelse(id == "Bangsamoro Autonomous Region\nin Muslim Mindanao_PHL", "Bangsamoro Autonomous Region\r\nin Muslim Mindanao_PHL", id))
 
-alaska_pop <- read.csv("version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/alaska_population.csv")  %>% 
+alaska_pop <- read.csv("step3_obtain_cell_level_GDP_and_predictors_data/outputs/alaska_population.csv")  %>% 
   rename(iso_real = iso)
 
 county_cell_pop_extracted_1deg_GDP <- county_cell_pop_extracted_1deg  %>% 
@@ -403,8 +347,7 @@ training_iso_1deg_cell_GCP <- county_cell_pop_extracted_1deg_GDP  %>%
   dplyr::select(c(cell_id, iso, year, GCP_1deg, state_total_GDP, parent_rgdp_total, national_population))  %>% 
   distinct(year, iso, cell_id, .keep_all = TRUE) 
 
-save(training_iso_1deg_cell_GCP, file = "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_1deg_cell_GCP.RData")
-
+save(training_iso_1deg_cell_GCP, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_1deg_cell_GCP.RData")
 
 # 0.5 degree                                 
 county_cell_pop_extracted_0_5deg_GDP <- county_cell_pop_extracted_0_5deg  %>% 
@@ -428,7 +371,7 @@ training_iso_0_5deg_cell_GCP <- county_cell_pop_extracted_0_5deg_GDP  %>%
   dplyr::select(c(cell_id, subcell_id, iso, year, GCP_0_5deg, state_total_GDP,parent_rgdp_total, national_population))  %>% 
   distinct(year, iso, cell_id, subcell_id, .keep_all = TRUE) 
 
-save(training_iso_0_5deg_cell_GCP, file = "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_0_5deg_cell_GCP.RData")
+save(training_iso_0_5deg_cell_GCP, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_0_5deg_cell_GCP.RData")
 
 # 0.25 degree                               
 county_cell_pop_extracted_0_25deg_GDP <- county_cell_pop_extracted_0_25deg  %>% 
@@ -452,32 +395,7 @@ training_iso_0_25deg_cell_GCP <- county_cell_pop_extracted_0_25deg_GDP  %>%
   dplyr::select(c(cell_id, subcell_id, subcell_id_0_25, iso, year, GCP_0_25deg, state_total_GDP,parent_rgdp_total, national_population))  %>% 
   distinct(year, iso, cell_id, subcell_id, subcell_id_0_25, .keep_all = TRUE) 
 
-save(training_iso_0_25deg_cell_GCP, file = "version2_year2012_2022/step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_0_25deg_cell_GCP.RData")
-
-# # 0.1 degree                               
-# county_cell_pop_extracted_0_1deg_GDP <- county_cell_pop_extracted_0_1deg  %>% 
-#                                       as.data.frame()  %>% 
-#                                       dplyr::select(c(cell_id, subcell_id, subcell_id_0_1, id, iso, year, county_GDPC, pop))  %>% 
-#                                       mutate(iso = ifelse(iso == "USA", paste0("USA_", substr(id, 1, 2)), iso))  %>% # by doing this, I change the state as new country
-#                                       left_join(county_GDP_change_USA)  %>%  # because I want to get the national GDP and national population to further rescale
-#                                       bind_rows(alaska_pop)  %>%  # add alaska here so that we can have its population     
-#                                       group_by(year, iso_real)  %>%                                   
-#                                       mutate(GDP_subcell_0_1 = county_GDPC*round(national_population*pop/sum(pop)))  %>% 
-#                                       ungroup()  %>% 
-#                                       filter(id != "Ala")  %>% # remove Alaska because we don't need it anymore
-#                                       group_by(iso, year)  %>% 
-#                                       mutate(GDP_subcell_0_1_rescl = GDP_subcell_0_1 * state_total_GDP/sum(GDP_subcell_0_1))  %>% 
-#                                       ungroup() 
-
-# training_iso_0_1deg_cell_GCP <- county_cell_pop_extracted_0_1deg_GDP  %>% 
-#                               group_by(year, iso, cell_id, subcell_id, subcell_id_0_1)  %>% 
-#                               mutate(GCP_0_1deg = sum(GDP_subcell_0_1_rescl))  %>% 
-#                               ungroup()  %>%                               
-#                               dplyr::select(c(cell_id, subcell_id, subcell_id_0_1, iso, year, GCP_0_1deg, state_total_GDP,parent_rgdp_total, national_population))  %>% 
-#                               distinct(year, iso, cell_id, subcell_id, subcell_id_0_1, .keep_all = TRUE) 
-
-# save(training_iso_0_1deg_cell_GCP, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_0_1deg_cell_GCP.RData")
-
+save(training_iso_0_25deg_cell_GCP, file = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/training_iso_0_25deg_cell_GCP.RData")
 
 # ----------------------------------------------------------------------------------------------------------------------------- #
 # cell intersection GIS data

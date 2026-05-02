@@ -1,38 +1,25 @@
-# ------------------------------------------------------------------------------------------------- #
-# Task Summary:
-
-# This file is to obtain true cell GDP for CHN
-# ------------------------------------------------------------------------------------------------- #
+# --------------------------------- Task Summary --------------------------------- #
+# This file is to obtain true cell GDP for CHN.
+# -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
-rm(list = ls())
-gc()
-
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(RColorBrewer)
 library(terra)
 library(exactextractr)
@@ -40,29 +27,29 @@ library(readxl)
 library(writexl)
 library(qgisprocess)
 
-# # first prepare for the geometry
+# first prepare for the geometry
 
-# temp_file <- tempfile(fileext = ".gpkg")
+temp_file <- tempfile(fileext = ".gpkg")
 
-# qgis_run_algorithm(
-#     "native:intersection",
-#     INPUT = "step1_obtain_gis_data/inputs/china_city/city.shp", 
-#     OVERLAY = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_1degree.gpkg", 
-#     OUTPUT = temp_file
-# )
+qgis_run_algorithm(
+    "native:intersection",
+    INPUT = "step1_obtain_gis_data/inputs/china_city/city.shp",
+    OVERLAY = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/just_grid_1degree.gpkg",
+    OUTPUT = temp_file
+)
 
-# difference <- qgis_run_algorithm(
-#   alg = "native:difference",
-#   INPUT = read_sf(temp_file), 
-#   OVERLAY = "step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp", 
-#   OUTPUT = "step6_test_model_under_shocks/outputs/china_city_inters_1deg_without_large_waters.gpkg", 
-#   .quiet = FALSE
-# )
+difference <- qgis_run_algorithm(
+  alg = "native:difference",
+  INPUT = read_sf(temp_file),
+  OVERLAY = "step1_obtain_gis_data/inputs/large_inland_waters_geom_GLWD_level1/glwd_1.shp",
+  OUTPUT = "step6_test_model_under_shocks/outputs/china_city_inters_1deg_without_large_waters.gpkg",
+  .quiet = FALSE
+)
 
 # ------------------------------------------------------------------------------
 # obtain China city level gdp for each province
-# Read the existing 2012-2021 data
-existing_data <- read_xlsx("step6_test_model_under_shocks/CHN_city_true_GDP_some_prov.xlsx")
+# Read the existing 2012-2021 historical city-level data (shipped as a static input)
+existing_data <- read_xlsx("step6_test_model_under_shocks/inputs/CHN_city_true_GDP_some_prov_2012_2021.xlsx")
 
 # Initialize a list to store 2022 data from each province
 data_2022_list <- list()
@@ -319,13 +306,13 @@ chn_city_geom <- read_sf("step1_obtain_gis_data/inputs/china_city/city.shp") %>%
 population_files <- list.files("step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:23] #choose years only after 2012
 
 pop_extracted_list <- mclapply(population_files, mc.cores = 5, FUN = function(filename) {
-  
+
   r <- rast(filename)
-  
+
   extract <- cbind(chn_city_geom, exact_extract(r, chn_city_geom, 'sum')) %>% 
     rename(pop = exact_extract.r..chn_city_geom...sum..) %>%
     mutate(year = as.integer(str_extract(filename, "\\d{4}")))
-  
+
   return(extract)
 })
 
@@ -356,15 +343,15 @@ chn_1deg <- read_sf("step6_test_model_under_shocks/outputs/china_city_inters_1de
 population_files <- list.files("step3_obtain_cell_level_GDP_and_predictors_data/inputs/population", full.names = T)[13:23] #choose years only after 2012
 
 county_cell_pop_extracted_1deg <- mclapply(population_files, mc.cores = 5, FUN = function(filename) {
-  
+
   r <- rast(filename)
   year_file <- gsub(".*landscan-global-(\\d{4}).*\\.tif", "\\1", filename)
   chn_1deg_year <- chn_1deg %>% filter(year == as.integer(year_file))
-  
+
   extract <- cbind(chn_1deg_year, exact_extract(r, chn_1deg_year, 'sum')) %>% 
     rename(pop = exact_extract.r..chn_1deg_year...sum..) %>%
     mutate(year = as.integer(year_file))
-  
+
   return(extract)
 }) %>% 
   do.call(rbind, .) %>% 

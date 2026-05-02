@@ -13,6 +13,7 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -23,7 +24,6 @@ library(jsonlite)
 library(httr)
 library(readxl)
 library(sf)
-library(units)
 library(readr)
 
 # read those regional data obtained before
@@ -31,12 +31,12 @@ files <- list.files("step2_obtain_gdp_data/temp") %>%
   .[grepl("training_data.csv$", .)]
 
 training_data_complete_pre <- lapply(files, function(file){
-  
+
   out_df <- read_csv(paste0("step2_obtain_gdp_data/temp/", file), col_types = cols(id = col_character()))  %>% 
     mutate(id = as.character(id))
-  
+
   return(out_df)
-  
+
 }) %>% reduce(bind_rows) %>% 
   dplyr::select(-c(parent_id))  %>% # we don't need this column
   filter(year >= 2012, year <= 2022) # we only need year 2012-2022 for now
@@ -115,25 +115,11 @@ national_gdp_rest <- national_gdp  %>%
 
 ## Save rescaled GDP data
 
-rgdp_total_rescaled <- rbind(training_data_rescaled, national_gdp_rest, alaska_state) %>% 
-  arrange(iso, year, parent_name)  %>% 
-  filter(year >= 2012, year <= 2022) # we only need year 2012-2022 for now
+rgdp_total_rescaled <- rbind(training_data_rescaled, national_gdp_rest, alaska_state) %>%
+  arrange(iso, year, parent_name)  %>%
+  filter(year >= 2012, year <= 2022)
 
-# fulfill the above dataset with previous years' data processed in version1_year2012_2021
-rgdp_total_rescaled_v1 <- read.csv("version1_year2012_2021/step2_obtain_gdp_data/outputs/rgdp_total_rescaled.csv")
-
-A <- rgdp_total_rescaled_v1 %>% 
-  distinct(id, year, iso, .keep_all = FALSE)
-
-B <- rgdp_total_rescaled %>% 
-  distinct(id, year, iso, .keep_all = FALSE) 
-
-from_v1 <- anti_join(A, B, by = c("id", "year", "iso")) %>% 
-  left_join(rgdp_total_rescaled_v1)
-
-rgdp_total_rescaled_full <- rbind(rgdp_total_rescaled, from_v1)
-
-write.csv(rgdp_total_rescaled_full, "step2_obtain_gdp_data/outputs/rgdp_total_rescaled.csv", row.names = F)
+write.csv(rgdp_total_rescaled, "step2_obtain_gdp_data/outputs/rgdp_total_rescaled.csv", row.names = F)
 
 # rescale DOSE's subnational gdp data
 

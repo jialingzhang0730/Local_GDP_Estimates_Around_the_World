@@ -3,8 +3,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -14,7 +12,6 @@ library(tidyverse)
 library(tictoc)
 library(sf)
 library(gdata)
-library(units)
 library(countrycode)
 library(qgisprocess)
 
@@ -25,14 +22,13 @@ regional_gis_files <- list.files("step2_obtain_gdp_data/temp") %>%
   .[grepl("admin_[^1]\\.gpkg$", .)]
 
 regional_subnational_poly <- lapply(regional_gis_files, function(file){
-  
+
   out_sf <- read_sf(paste0("step2_obtain_gdp_data/temp/", file)) %>% 
            st_set_crs(4326)
-  
-  return(out_sf)
-  
-}) %>% reduce(rbind)
 
+  return(out_sf)
+
+}) %>% reduce(rbind)
 
 training_poly_complete <- read_sf("step2_obtain_gdp_data/temp/oecd_training_poly.gpkg") %>% 
   dplyr::select(id, iso, geom) %>% 
@@ -91,7 +87,6 @@ world_poly_pre <- read_sf("step1_obtain_gis_data/outputs/CGAZ_ADM1_without_large
   rbind(hkg_mac, oecd, regional_subnational_poly_noid, pak, islands, alaska) 
 
 st_write(world_poly_pre, "step2_obtain_gdp_data/temp/world_poly_pre.gpkg", append = F)
-
 
 temp_output_file <- tempfile(fileext = ".gpkg")
 

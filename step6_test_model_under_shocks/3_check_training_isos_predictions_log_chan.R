@@ -6,34 +6,23 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
-rm(list = ls())
-gc()
-
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(RColorBrewer)
 library(terra)
 library(exactextractr)
@@ -136,7 +125,6 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
 
 ggsave("step6_test_model_under_shocks/outputs/log_level_change_r2_training_all.png", plot = combined_plot, width = 18, height = 12, bg = "white")
 
-
 # ---------- 0.5deg ---------- #
 # read the true cell GDP
 load("step3_obtain_cell_level_GDP_and_predictors_data/outputs/new_predict_data_complete_0_5deg.RData")
@@ -233,7 +221,6 @@ combined_plot <- ggplot(combined_data, aes(x = ifelse(type == "Log Level:", log_
   )
 
 ggsave("step6_test_model_under_shocks/outputs/log_level_change_r2_training_all_0_5deg.png", plot = combined_plot, width = 18, height = 12, bg = "white")
-
 
 # ---------- 0.25deg ---------- #
 # read the true cell GDP

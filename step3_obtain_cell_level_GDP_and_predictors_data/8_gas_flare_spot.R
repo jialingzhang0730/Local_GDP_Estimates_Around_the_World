@@ -4,8 +4,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -13,22 +11,16 @@ Sys.setlocale("LC_ALL", "en_US.UTF-8")
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(exactextractr)
 library(terra)
 library(raster)
@@ -83,6 +75,4 @@ ggplot() +
         legend.position = "none")
 
 ggsave("step3_obtain_cell_level_GDP_and_predictors_data/outputs/gas_flare_data/gas_flare_spot.png", width = 10, height = 6, bg = "white")
-
-
 

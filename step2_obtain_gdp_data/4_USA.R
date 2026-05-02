@@ -7,11 +7,11 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(tidyverse)
-library(units)
 library(gdata)
 library(tigris)
 library(sf)
@@ -330,7 +330,7 @@ county_sf <- county_sf_pre %>%
   mutate(iso = "USA")  %>% 
   dplyr::select(id, iso)  %>% 
   rename(geom = geometry)
-  
+
 # check whether every line of gdp data have a corresponding geometry
 check <- county_gdp  %>% 
   rename(id = fips) %>% 

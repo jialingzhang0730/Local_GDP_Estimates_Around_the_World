@@ -3,6 +3,7 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -12,12 +13,10 @@ library(ranger)
 library(tidyverse)
 library(magrittr)
 library(tictoc)
-library(ranger)
 library(tidymodels)
 library(vip)
 library(parallel)
 library(readxl)
-library(units)
 
 # ------------------------------------------------- #
 # obtain full training data
@@ -74,7 +73,7 @@ folds <- group_vfold_cv(data_full, group = "iso", v = 5)
 
 set.seed(1234567)
 train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
-  
+
   target_var <- "GCP_share_0_5deg"
   predictor_vars <- c("pop_total_share","pop_urban_share", "pop_cropland_share", "pop_other_share", "CO2_bio_manuf_conbust_share", "CO2_bio_heavy_indus_share", "CO2_bio_tspt_share",
                       "CO2_non_org_manuf_conbust_share", "CO2_non_org_heavy_indus_share", "CO2_non_org_tspt_share", "NPP_share",
@@ -88,9 +87,9 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
   if(tune_par){
     tic(paste0(name, "tuning parameters"))
 
-    rf_grid <- expand.grid(mtry = c(24,26,28,30,32,34,36),
+    rf_grid <- expand.grid(mtry = c(27,29,31),
                            trees = c(1500),
-                           min_n = c(2300,2400,2500,2600,2700,2800,2900,3000))
+                           min_n = c(1800,2300,2800,3300))
 
     tune_hyperparameters <- function(params, data_full, df.cv) {
 
@@ -230,7 +229,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
           set_engine("ranger", verbose = FALSE, importance = "impurity", seed = 1234567) %>%
           set_mode("regression") %>%
           fit(formula, data = analysis, weights = import_weight)
-        
+
         var_importance[[i]] <- vi(fit)
 
         # obtain model fit: note here we care about fit, so do not use out of bag predictions
@@ -263,7 +262,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
           group_by(iso) %>%
           filter(year != min(year)) %>%
           ungroup()
-        
+
         analysis_fit_ch <- analysis_fit %>% 
           group_by(iso) %>%
           filter(year != min(year)) %>%
@@ -300,7 +299,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
           group_by(iso) %>%
           filter(year != min(year)) %>%
           ungroup()
-        
+
         assessment_pred_ch <- assessment_pred %>% 
           group_by(iso) %>%
           filter(year != min(year)) %>%
@@ -463,7 +462,6 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
 
       # Save the variable importance scores
       save(var_importance, file = "step4_benchmark_model/outputs/model9_tuning/put_all_isos_to_train/var_imptc_score_0_5deg_up_to_2019.RData")
-
 
       # now collect the metrics for each of the five held-out samples:
       # ------- for the within-sample fit ------- # 
@@ -702,7 +700,7 @@ train_rf <- function(data_full, df.cv = folds, name = "RF", tune_par = T){
 
   toc()
   }
-  
+
   return(rf_fit)
 }
 

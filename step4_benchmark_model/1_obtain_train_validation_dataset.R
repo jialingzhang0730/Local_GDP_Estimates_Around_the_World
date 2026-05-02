@@ -4,27 +4,22 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(readxl)
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -108,7 +103,6 @@ validation_df_year <- bind_rows(validation_df_year_developed, validation_df_year
 validation_df_iso <- bind_rows(validation_df_iso_developed, validation_df_iso_developing)
 testing_df_year <- bind_rows(testing_df_year_developed, testing_df_year_developing)
 testing_df_iso <- bind_rows(testing_df_iso_developed, testing_df_iso_developing)
-
 
 write.csv(training_df, file = "step4_benchmark_model/outputs/new_data_train_1deg.csv", row.names = FALSE)
 write.csv(validation_df_year, file = "step4_benchmark_model/outputs/new_data_valid_year_1deg.csv",row.names = FALSE)

@@ -5,8 +5,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -14,20 +12,16 @@ Sys.setlocale("LC_ALL", "en_US.UTF-8")
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
 library(cowplot)
 
 # -------------------
@@ -60,7 +54,6 @@ df <- model_9_1  %>%
   left_join(model_9_5)%>% 
   filter(!is.infinite(growth_91) & !is.nan(growth_91) &
            !is.infinite(growth_95) & !is.nan(growth_95)) # because some GCP == 0
-
 
 # define a function to calculate R^2
 df_complete <- df[!is.na(df$growth_91) & 
@@ -205,7 +198,6 @@ p3 <- ggplot(df, aes(x=growth_91, y = growth_95)) +
     panel.grid.minor = element_line(color = "grey90"),
     plot.margin = margin(0, 13, 20, 13)
   )      
-
 
 # now see within sample training years: 2018 to 2019
 model_9_1 <- predict_data_results_0_5deg_without_prov_boundary  %>% 
@@ -379,7 +371,6 @@ p6 <- ggplot(df, aes(x=growth_91, y = growth_95)) +
     panel.grid.minor = element_line(color = "grey90"),
     plot.margin = margin(20, 0, 0, 26)
   )     
-
 
 combined_plot <- plot_grid(p1, p3, p5, p2, p4, p6, ncol = 3)
 

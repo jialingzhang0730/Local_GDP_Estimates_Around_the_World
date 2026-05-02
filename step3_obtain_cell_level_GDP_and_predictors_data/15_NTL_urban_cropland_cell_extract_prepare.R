@@ -5,8 +5,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -60,7 +58,6 @@ lc_extracted <- mclapply(year_folders, mc.cores = 2, FUN = function(year_folder)
 #       click the "..." in the "Intersection" section and save it as "inputs/lc_inters_id_xdeg/lc_urban_inters_id_xdeg_20xx.gpkg" and run.
 #       (I think batch process is faster and more convenient)
 
-
 # Now intersect cell polygons with landcover_cropland polygons, we do it in QGIS 
 # Do the following for each of 1/0.5/0.25/0.1degree files: "inputs/world_province_xdeg_with_id.geojson"
 #   1. Drag each year "outputs/landcover_poly/lc_polygons_20xx.gpkg" into QGIS; drag "inputs/world_province_xdeg_with_id.geojson" into QGIS
@@ -76,22 +73,21 @@ lc_extracted <- mclapply(year_folders, mc.cores = 2, FUN = function(year_folder)
 #       select "20xx" as Input layer, Choose "xdeg" as the Overlay layer, 
 #       click the "..." in the "Intersection" section and save it as "inputs/lc_inters_id_xdeg/lc_cropland_inters_id_xdeg_20xx.ggpkg" and run.
 
-
 years <- c("2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022")
 
 mclapply(1:length(years), mc.cores = 5, function(i) {
     year <- years[i]
-    
+
     input <- read_sf(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/landcover_poly/lc_polygons_", year, ".gpkg")) %>% 
         filter(get(paste0("test", year)) == 9) 
-      
+
     qgis_run_algorithm(
         "native:fixgeometries",
         INPUT = input,
         OUTPUT = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_inters_id_temp/temp_urban_", year, ".gpkg"),
         .quiet = FALSE
     )
-  
+
     input <- read_sf(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/landcover_poly/lc_polygons_", year, ".gpkg")) %>% 
         filter(get(paste0("test", year)) %in% c(25,35,36))
 
@@ -104,7 +100,6 @@ mclapply(1:length(years), mc.cores = 5, function(i) {
 
 })
 
-
 mclapply(1:length(years), mc.cores = 5, function(i) {
     year <- years[i]
 
@@ -115,7 +110,6 @@ mclapply(1:length(years), mc.cores = 5, function(i) {
         OUTPUT = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_inters_id_1deg/lc_urban_inters_id_1deg_", year, ".gpkg")
     )
 
-
     qgis_run_algorithm(
         "native:intersection",
         INPUT = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_inters_id_temp/temp_cropland_", year, ".gpkg"), 
@@ -123,7 +117,6 @@ mclapply(1:length(years), mc.cores = 5, function(i) {
         OUTPUT = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_inters_id_1deg/lc_cropland_inters_id_1deg_", year, ".gpkg")
     )
 })
-
 
 mclapply(1:length(years), mc.cores = 5, function(i) {
     year <- years[i]
@@ -135,7 +128,6 @@ mclapply(1:length(years), mc.cores = 5, function(i) {
         OUTPUT = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_inters_id_0_5deg/lc_urban_inters_id_0_5deg_", year, ".gpkg")
     )
 
-
     qgis_run_algorithm(
         "native:intersection",
         INPUT = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_inters_id_temp/temp_cropland_", year, ".gpkg"), 
@@ -143,7 +135,6 @@ mclapply(1:length(years), mc.cores = 5, function(i) {
         OUTPUT = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_inters_id_0_5deg/lc_cropland_inters_id_0_5deg_", year, ".gpkg")
     )
 })
-
 
 mclapply(1:length(years), mc.cores = 5, function(i) {
     year <- years[i]
@@ -154,7 +145,6 @@ mclapply(1:length(years), mc.cores = 5, function(i) {
         OVERLAY = "step3_obtain_cell_level_GDP_and_predictors_data/outputs/world_province_0_25deg_with_cellid.gpkg", 
         OUTPUT = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/lc_inters_id_0_25deg/lc_urban_inters_id_0_25deg_", year, ".gpkg")
     )
-
 
     qgis_run_algorithm(
         "native:intersection",

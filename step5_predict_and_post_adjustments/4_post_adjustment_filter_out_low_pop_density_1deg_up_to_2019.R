@@ -4,34 +4,23 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
-rm(list = ls())
-gc()
-
 ### Load packages ----
 library(tictoc)
 library(gdata)
-library(units)
 library(sf)
 library(parallel)
 library(tidyverse)
 library(fs)
 library(dplyr)
 library(data.table)
-library(vip)
 library(ranger)
 library(tmaptools)
 library(scales)
 library(workflows)
-library(data.table)
-library(tmaptools)
-library(plotly)
-library(htmlwidgets)
 library(exactextractr)
 library(terra)
 library(raster)
@@ -50,7 +39,6 @@ pop <- land_pop_extracted_region_level_1deg  %>%
        dplyr::select(c("cell_id", "id", "iso", "year", "pop"))  %>% 
        mutate(pop = floor(pop)) %>%
        mutate(iso = ifelse(iso == "Ala", "USA", iso))
-
 
 # load land area: 
 # Note: the land area calculated is the area in square km based on a spherical approximation of the Earth

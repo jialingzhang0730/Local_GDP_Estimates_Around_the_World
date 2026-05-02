@@ -11,11 +11,12 @@
 #   for certain countries or years, use World Bank or UN data to supplement.
 # For consistency across scripts, all values should be converted to billions (xxx)
 #
-# In version2_year2012_2022, the "MNE" data are obtained from the World Bank, 
-#   whereas in version1_year2012_2021, they were obtained from the IMF.
+# Montenegro (MNE) national GDP is obtained from the World Bank, since IMF coverage is not
+# complete for the years used here.
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
+
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
 
@@ -226,5 +227,4 @@ write.csv(national_gdpc_current_USD, "step2_obtain_gdp_data/temp/national_gdpc_c
 write.csv(national_gdpc_const_2021_USD, "step2_obtain_gdp_data/temp/national_gdpc_const_2021_USD.csv", row.names = F)
 write.csv(national_gdpc_current_PPP, "step2_obtain_gdp_data/temp/national_gdpc_current_PPP.csv", row.names = F)
 write.csv(national_gdpc_const_2021_PPP, "step2_obtain_gdp_data/temp/national_gdpc_const_2021_PPP.csv", row.names = F)
-
 

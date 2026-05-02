@@ -6,8 +6,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -19,7 +17,6 @@ library(sf)
 library(gdata)
 library(parallel)
 library(tictoc)
-library(units)
 library(OECD)
 library(rsdmx)
 library(giscoR)
@@ -342,13 +339,13 @@ write.csv(training_df, "step2_obtain_gdp_data/temp/oecd_training_data.csv", row.
 ## NUTS data ----- there are some geometries we can obtain very easily 
 
 nuts_sf_pre <- lapply(c("0", "1", "2", "3"), function(admin_level){
-  
+
   df_out <- gisco_get_nuts(year = "2021", epsg = "4326", 
                            resolution = "10", nuts_level = admin_level) %>% 
     mutate(LEVL_CODE = ifelse(LEVL_CODE == "0", "1", LEVL_CODE))
-  
+
   return(df_out)
-  
+
 }) %>% do.call('rbind', .) %>% 
   rename(id = NUTS_ID) %>% 
   left_join(dplyr::select(codelist, eurostat, iso3c), by = c("CNTR_CODE" = "eurostat")) %>% 

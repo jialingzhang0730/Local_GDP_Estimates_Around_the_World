@@ -6,8 +6,6 @@
 # -------------------------------------------------------------------------------- #
 
 # use R version 4.2.1 (2022-06-23) -- "Funny-Looking Kid"
-rm(list = ls())
-gc()
 
 Sys.getlocale()
 Sys.setlocale("LC_ALL", "en_US.UTF-8")
@@ -38,7 +36,7 @@ year_folders <- year_folders_pre
 NPP <- mclapply(year_folders, mc.cores = 2, FUN= function(year_folder){
   folder_path <- file.path(data_folder, year_folder)
   hdf_files <- list.files(folder_path, pattern = "\\.hdf$", full.names = TRUE)
-  
+
   tic("list time")
   mclapply(1:length(hdf_files), mc.cores = 5, function(i){
     hdf_file <- hdf_files[i]
@@ -47,7 +45,7 @@ NPP <- mclapply(year_folders, mc.cores = 2, FUN= function(year_folder){
     writeRaster(a, paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_temp_files/test", i,"_",year_folder,".tif"), overwrite = TRUE)
   })
   toc()
-  
+
   tif_files <- paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_temp_files/test", 1:length(hdf_files), "_",year_folder, ".tif")
   vrt_file <- paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_temp_files/test",year_folder,".vrt")
   v <- terra::vrt(tif_files, vrt_file, overwrite=TRUE)
@@ -65,25 +63,25 @@ year_folders_pre <- list.dirs(data_folder, recursive = FALSE, full.names = FALSE
 year_folders <- year_folders_pre
 
 NPP <- mclapply(year_folders, mc.cores = 11, FUN= function(year_folder){
-  
+
   v <- rast(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_temp_files/test", year_folder,".vrt"))
-  
+
   tic("extract") 
   extract <- exact_extract(v, simplified_poly, coverage_area = T, progress = T,
                            include_cols = c("id", "iso", "cell_id"), summarize_df = T, 
                            fun = function(df_in){
-                             
+
                              out_df <- df_in  %>% 
                                mutate(value = ifelse(value >= 3.2760 | value < -3 | is.na(value), 0, value))  %>% # those out of range values are not real "values" according to the data's user guide
                                group_by(cell_id, iso, id)  %>% 
                                summarize(NPP = sum(value * coverage_area), .groups = "drop")
-                             
+
                              return(out_df)
                            })
   toc()
-  
+
   save(extract, file = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_year_sep/NPP_extracted_1deg", year_folder, ".RData"))
-  
+
 })
 
 # Now combine all years files
@@ -93,7 +91,7 @@ for (year in years){
   load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_year_sep/NPP_extracted_1deg", year, ".RData"))
   extract <- extract %>%
     mutate(year = as.integer(year))
-  
+
   if (is.null(NPP_full)) {
     NPP_full <- extract
   } else {
@@ -115,25 +113,25 @@ year_folders_pre <- list.dirs(data_folder, recursive = FALSE, full.names = FALSE
 year_folders <- year_folders_pre
 
 NPP <- mclapply(year_folders, mc.cores = 11, FUN= function(year_folder){
-  
+
   v <- rast(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_temp_files/test", year_folder,".vrt"))
-  
+
   tic("extract") 
   extract <- exact_extract(v, simplified_poly, coverage_area = T, progress = T,
                            include_cols = c("id", "iso", "cell_id", "subcell_id"), summarize_df = T, 
                            fun = function(df_in){
-                             
+
                              out_df <- df_in  %>% 
                                mutate(value = ifelse(value >= 3.2760 | value < -3 | is.na(value), 0, value))  %>% # those out of range values are not real "values" according to the data's user guide
                                group_by(subcell_id, cell_id, iso, id)  %>% 
                                summarize(NPP = sum(value * coverage_area), .groups = "drop")
-                             
+
                              return(out_df)
                            })
   toc()
-  
+
   save(extract, file = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_year_sep/NPP_extracted_0_5deg", year_folder, ".RData"))
-  
+
 })
 
 # Now combine all years files
@@ -143,7 +141,7 @@ for (year in years){
   load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_year_sep/NPP_extracted_0_5deg", year, ".RData"))
   extract <- extract %>%
     mutate(year = as.integer(year))
-  
+
   if (is.null(NPP_full)) {
     NPP_full <- extract
   } else {
@@ -165,25 +163,25 @@ year_folders_pre <- list.dirs(data_folder, recursive = FALSE, full.names = FALSE
 year_folders <- year_folders_pre
 
 NPP <- mclapply(year_folders, mc.cores = 11, FUN= function(year_folder){
-  
+
   v <- rast(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_temp_files/test", year_folder,".vrt"))
-  
+
   tic("extract") 
   extract <- exact_extract(v, simplified_poly, coverage_area = T, progress = T,
                            include_cols = c("id", "iso", "cell_id", "subcell_id", "subcell_id_0_25"), summarize_df = T, 
                            fun = function(df_in){
-                             
+
                              out_df <- df_in  %>% 
                                mutate(value = ifelse(value >= 3.2760 | value < -3 | is.na(value), 0, value))  %>% # those out of range values are not real "values" according to the data's user guide
                                group_by(subcell_id_0_25, subcell_id, cell_id, iso, id)  %>% 
                                summarize(NPP = sum(value * coverage_area), .groups = "drop")
-                             
+
                              return(out_df)
                            })
   toc()
-  
+
   save(extract, file = paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_year_sep/NPP_extracted_0_25deg", year_folder, ".RData"))
-  
+
 })
 
 # Now combine all years files
@@ -193,7 +191,7 @@ for (year in years){
   load(paste0("step3_obtain_cell_level_GDP_and_predictors_data/outputs/NPP_year_sep/NPP_extracted_0_25deg", year, ".RData"))
   extract <- extract %>%
     mutate(year = as.integer(year))
-  
+
   if (is.null(NPP_full)) {
     NPP_full <- extract
   } else {
